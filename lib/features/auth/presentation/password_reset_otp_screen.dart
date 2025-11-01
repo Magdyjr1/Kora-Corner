@@ -1,22 +1,22 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../../../core/theme/game_on_theme.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/theme/game_on_theme.dart';
 
 final supabase = Supabase.instance.client;
 
-class OtpScreen extends StatefulWidget {
-  const OtpScreen({super.key, this.email, this.digits = 6});
+class PasswordResetOtpScreen extends StatefulWidget {
+  const PasswordResetOtpScreen({super.key, required this.email, this.digits = 6});
 
-  final String? email;
+  final String email;
   final int digits;
 
   @override
-  State<OtpScreen> createState() => _OtpScreenState();
+  State<PasswordResetOtpScreen> createState() => _PasswordResetOtpScreenState();
 }
 
-class _OtpScreenState extends State<OtpScreen> {
+class _PasswordResetOtpScreenState extends State<PasswordResetOtpScreen> {
   late List<TextEditingController> _controllers;
   late List<FocusNode> _focusNodes;
   Timer? _timer;
@@ -32,7 +32,7 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   void _startTimer() {
-    _timer?.cancel(); // Cancel any existing timer
+    _timer?.cancel(); 
     _seconds = 59;
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
@@ -69,33 +69,33 @@ class _OtpScreenState extends State<OtpScreen> {
   String get _code => _controllers.map((c) => c.text).join();
 
   Future<void> _verifyOtp() async {
-    if (widget.email == null || _code.length != widget.digits) {
+    if (_code.length != widget.digits) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('الرجاء إدخال الرمز المكون من 6 أرقام')),
       );
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       final response = await supabase.auth.verifyOTP(
-        email: widget.email!,
+        email: widget.email,
         token: _code,
-        type: OtpType.signup,
+        type: OtpType.recovery, // Use OtpType.recovery for password reset
       );
-
+      
       if (response.session != null && mounted) {
-        context.go('/home');
+        // On success, navigate to the final update password screen
+        context.go('/update-password');
       } else {
-        if (mounted) {
-           ScaffoldMessenger.of(context).showSnackBar(
-             const SnackBar(content: Text('رمز تحقق غير صحيح أو منتهي الصلاحية')),
-           );
-        }
+          if (mounted) {
+             ScaffoldMessenger.of(context).showSnackBar(
+               const SnackBar(content: Text('رمز تحقق غير صحيح أو منتهي الصلاحية')),
+             );
+          }
       }
+
     } on AuthException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -104,9 +104,7 @@ class _OtpScreenState extends State<OtpScreen> {
       }
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -116,6 +114,11 @@ class _OtpScreenState extends State<OtpScreen> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
+         appBar: AppBar(
+          title: const Text('التحقق من الرمز'),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+        ),
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(KoraCornerDimens.spacing),
@@ -123,13 +126,7 @@ class _OtpScreenState extends State<OtpScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 12),
-                Text('رمز التحقق', textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 8),
-                Text(
-                  'تم إرسال الرمز إلى بريدك الإلكتروني',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
+                Text('أدخل الرمز المرسل إلى ${widget.email}', textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
                 const SizedBox(height: 24),
                 FittedBox(
                   child: Row(

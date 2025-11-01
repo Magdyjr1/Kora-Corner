@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/game_on_theme.dart';
 import '../../../core/utils/responsive.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -17,36 +17,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   final List<OnboardingPage> _pages = [
     OnboardingPage(
-      title: 'Welcome to GameOn',
+      title: 'Welcome to Kora Corner',
       description:
       'Test your football knowledge with exciting quiz challenges and compete with friends!',
-      icon: Icons.sports_soccer,
-      color: AppColors.gameOnGreen,
     ),
     OnboardingPage(
       title: 'Multiple Challenge Types',
       description:
       'Play Bank, Password, Risk, and many more unique football quiz formats designed for ultimate fun.',
-      icon: Icons.quiz,
-      color: AppColors.brightGold,
     ),
     OnboardingPage(
       title: 'Compete & Learn',
       description:
       'Track your progress, earn points, and discover interesting facts about football while having fun!',
-      icon: Icons.emoji_events,
-      color: AppColors.gameOnGreen,
     ),
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    // التحويل التلقائي بعد 2 ثانية إلى شاشة تسجيل الدخول
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) context.go('/login');
-    });
-  }
+
 
   @override
   void dispose() {
@@ -57,7 +44,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.darkPitch,
+      backgroundColor: KoraCornerColors.background,
       body: SafeArea(
         child: ResponsiveContainer(
           child: Column(
@@ -90,33 +77,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: Responsive.getAvatarSize(context) * 2.4,
-            height: Responsive.getAvatarSize(context) * 2.4,
-            decoration: BoxDecoration(
-              color: page.color,
-              borderRadius:
-              BorderRadius.circular(Responsive.getAvatarSize(context) * 1.2),
-              boxShadow: [
-                BoxShadow(
-                  color: page.color.withOpacity(0.3),
-                  blurRadius: 20,
-                  spreadRadius: 5,
-                ),
-              ],
-            ),
-            child: Icon(
-              page.icon,
-              size: Responsive.getAvatarSize(context) * 1.2,
-              color: AppColors.black,
-            ),
+          Image.asset(
+            'assets/images/word.png',
+            height: Responsive.getAvatarSize(context) * 2.0,
           ),
           SizedBox(height: Responsive.getSpacing(context) * 3),
           ResponsiveText(
             page.title,
             style: Theme.of(context).textTheme.displayMedium?.copyWith(
               fontWeight: FontWeight.bold,
-              color: AppColors.white,
+              color: KoraCornerColors.textPrimary,
               fontSize: Responsive.getTitleSize(context) * 1.2,
             ),
             textAlign: TextAlign.center,
@@ -125,7 +95,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ResponsiveText(
             page.description,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: AppColors.lightGrey,
+              color: KoraCornerColors.textSecondary,
               height: 1.5,
               fontSize: Responsive.getBodySize(context),
             ),
@@ -153,8 +123,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 height: Responsive.getSpacing(context) * 0.5,
                 decoration: BoxDecoration(
                   color: _currentPage == index
-                      ? AppColors.gameOnGreen
-                      : AppColors.grey,
+                      ? KoraCornerColors.primaryGreen
+                      : KoraCornerColors.textSecondary,
                   borderRadius: BorderRadius.circular(
                       Responsive.getSpacing(context) * 0.25),
                 ),
@@ -200,13 +170,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 class OnboardingPage {
   final String title;
   final String description;
-  final IconData icon;
-  final Color color;
 
   OnboardingPage({
     required this.title,
     required this.description,
-    required this.icon,
-    required this.color,
   });
 }

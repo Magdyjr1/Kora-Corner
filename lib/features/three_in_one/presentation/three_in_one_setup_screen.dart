@@ -71,7 +71,7 @@ class _ThreeInOneSetupScreenState extends State<ThreeInOneSetupScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/categories'),
+          onPressed: () => context.go('/home'),
         ),
       ),
       body: ResponsiveContainer(

@@ -1,79 +1,79 @@
 import 'package:flutter/material.dart';
 
-class GameOnColors {
-  GameOnColors._();
+class KoraCornerColors {
+  KoraCornerColors._();
 
   static const Color background = Color(0xFF121212); // Dark Pitch
   static const Color surface = Color(0xFF1A1A1A);
-  static const Color primaryGreen = Color(0xFF00FF87); // GameOn Green
+  static const Color primaryGreen = Color(0xFF00FF87); // Kora Corner Green
   static const Color accentGold = Color(0xFFFFC700); // Bright Gold
   static const Color textPrimary = Colors.white;
   static const Color textSecondary = Color(0xFFB3B3B3); // light gray
 }
 
-class GameOnDimens {
-  GameOnDimens._();
+class KoraCornerDimens {
+  KoraCornerDimens._();
 
   static const double radius = 16.0; // 16px rounded borders
   static const double fieldHeight = 56.0;
   static const double spacing = 16.0;
 }
 
-class GameOnTheme {
-  GameOnTheme._();
+class KoraCornerTheme {
+  KoraCornerTheme._();
 
   static ThemeData themeData = ThemeData(
     brightness: Brightness.dark,
-    scaffoldBackgroundColor: GameOnColors.background,
-    primaryColor: GameOnColors.primaryGreen,
+    scaffoldBackgroundColor: KoraCornerColors.background,
+    primaryColor: KoraCornerColors.primaryGreen,
     colorScheme: const ColorScheme.dark(
-      primary: GameOnColors.primaryGreen,
-      secondary: GameOnColors.accentGold,
-      background: GameOnColors.background,
-      surface: GameOnColors.surface,
+      primary: KoraCornerColors.primaryGreen,
+      secondary: KoraCornerColors.accentGold,
+      background: KoraCornerColors.background,
+      surface: KoraCornerColors.surface,
     ),
     textTheme: const TextTheme(
       titleLarge: TextStyle(
-        color: GameOnColors.accentGold,
+        color: KoraCornerColors.accentGold,
         fontSize: 24,
         fontWeight: FontWeight.w700,
       ),
       labelLarge: TextStyle(
-        color: GameOnColors.background,
+        color: KoraCornerColors.background,
         fontSize: 16,
         fontWeight: FontWeight.w700,
       ),
       bodyMedium: TextStyle(
-        color: GameOnColors.textSecondary,
+        color: KoraCornerColors.textSecondary,
         fontSize: 14,
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: GameOnColors.surface,
+      fillColor: KoraCornerColors.surface,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(GameOnDimens.radius),
+        borderRadius: BorderRadius.circular(KoraCornerDimens.radius),
         borderSide: const BorderSide(color: Colors.transparent),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(GameOnDimens.radius),
+        borderRadius: BorderRadius.circular(KoraCornerDimens.radius),
         borderSide: const BorderSide(color: Colors.transparent),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(GameOnDimens.radius),
-        borderSide: const BorderSide(color: GameOnColors.primaryGreen, width: 2),
+        borderRadius: BorderRadius.circular(KoraCornerDimens.radius),
+        borderSide: const BorderSide(color: KoraCornerColors.primaryGreen, width: 2),
       ),
-      hintStyle: const TextStyle(color: GameOnColors.textSecondary),
+      hintStyle: const TextStyle(color: KoraCornerColors.textSecondary),
     ),
   );
 
   static ButtonStyle primaryButtonStyle = ElevatedButton.styleFrom(
-    backgroundColor: GameOnColors.primaryGreen,
-    foregroundColor: GameOnColors.background,
+    backgroundColor: KoraCornerColors.primaryGreen,
+    foregroundColor: KoraCornerColors.background,
     minimumSize: const Size.fromHeight(56),
     shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(GameOnDimens.radius),
+      borderRadius: BorderRadius.circular(KoraCornerDimens.radius),
     ),
     textStyle: const TextStyle(
       fontSize: 16,
@@ -81,5 +81,3 @@ class GameOnTheme {
     ),
   );
 }
-
-

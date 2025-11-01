@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/game_on_theme.dart';
+import '../../../widgets/persistent_bottom_nav_bar.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -8,20 +9,27 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.darkPitch,
+      backgroundColor: KoraCornerColors.background,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildUserStatsRow(context),
-              const SizedBox(height: 32),
-              _buildMainIllustration(context),
-              const SizedBox(height: 32),
-              _buildChallengeCards(context),
-            ],
-          ),
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildUserStatsRow(context),
+                    const SizedBox(height: 32),
+                    _buildMainIllustration(context),
+                    const SizedBox(height: 32),
+                    _buildChallengeCards(context),
+                  ],
+                ),
+              ),
+            ),
+            const PersistentBottomNavBar(currentIndex: 0),
+          ],
         ),
       ),
     );
@@ -31,7 +39,11 @@ class HomeScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: AppColors.cardGradient,
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1A1A1A), Color(0xFF2A2A2A)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -45,10 +57,10 @@ class HomeScreen extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 25,
-            backgroundColor: AppColors.gameOnGreen,
+            backgroundColor: KoraCornerColors.primaryGreen,
             child: const Icon(
               Icons.person,
-              color: AppColors.black,
+              color: KoraCornerColors.background,
               size: 24,
             ),
           ),
@@ -58,7 +70,7 @@ class HomeScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Player',
+                  'Kora Corner',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -68,14 +80,14 @@ class HomeScreen extends StatelessWidget {
                   children: [
                     const Icon(
                       Icons.emoji_events,
-                      color: AppColors.brightGold,
+                      color: KoraCornerColors.accentGold,
                       size: 16,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       '1,250 Points',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.brightGold,
+                        color: KoraCornerColors.accentGold,
                       ),
                     ),
                   ],
@@ -92,7 +104,11 @@ class HomeScreen extends StatelessWidget {
       width: double.infinity,
       height: 200,
       decoration: BoxDecoration(
-        gradient: AppColors.cardGradient,
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1A1A1A), Color(0xFF2A2A2A)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -111,12 +127,12 @@ class HomeScreen extends StatelessWidget {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: AppColors.gameOnGreen.withOpacity(0.2),
+                color: KoraCornerColors.primaryGreen.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(40),
               ),
               child: const Icon(
                 Icons.sports_soccer,
-                color: AppColors.gameOnGreen,
+                color: KoraCornerColors.primaryGreen,
                 size: 40,
               ),
             ),
@@ -137,7 +153,7 @@ class HomeScreen extends StatelessWidget {
                 Text(
                   'Choose your game mode and start playing!',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: AppColors.lightGrey,
+                    color: KoraCornerColors.textSecondary,
                   ),
                 ),
               ],
@@ -156,7 +172,7 @@ class HomeScreen extends StatelessWidget {
           title: 'صباحو تحدي',
           subtitle: 'Morning Challenge',
           icon: Icons.wb_sunny,
-          color: AppColors.brightGold,
+          color: KoraCornerColors.accentGold,
           onTap: () => context.go('/categories'),
         ),
         const SizedBox(height: 16),
@@ -165,7 +181,7 @@ class HomeScreen extends StatelessWidget {
           title: '3 في 1',
           subtitle: '3 in 1 Challenge',
           icon: Icons.casino,
-          color: AppColors.gameOnGreen,
+          color: KoraCornerColors.primaryGreen,
           onTap: () => context.go('/three-in-one-setup'),
         ),
       ],
@@ -186,7 +202,11 @@ class HomeScreen extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          gradient: AppColors.cardGradient,
+          gradient: const LinearGradient(
+            colors: [Color(0xFF1A1A1A), Color(0xFF2A2A2A)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: color.withOpacity(0.3),
@@ -218,7 +238,7 @@ class HomeScreen extends StatelessWidget {
               ),
               child: Icon(
                 icon,
-                color: AppColors.black,
+                color: KoraCornerColors.background,
                 size: 30,
               ),
             ),
@@ -237,7 +257,7 @@ class HomeScreen extends StatelessWidget {
                   Text(
                     subtitle,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.lightGrey,
+                      color: KoraCornerColors.textSecondary,
                     ),
                   ),
                 ],

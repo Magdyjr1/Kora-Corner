@@ -1,115 +1,178 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/game_on_theme.dart';
+import 'google_sign_in_button.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class LoginScreen extends StatelessWidget {
-	const LoginScreen({super.key});
+final supabase = Supabase.instance.client;
 
-	@override
-	Widget build(BuildContext context) {
-		return Directionality(
-			textDirection: TextDirection.rtl,
-			child: Scaffold(
-				body: SafeArea(
-					child: Padding(
-						padding: const EdgeInsets.all(GameOnDimens.spacing),
-						child: Column(
-							crossAxisAlignment: CrossAxisAlignment.stretch,
-							children: [
-								const SizedBox(height: 12),
-								// Header illustration placeholder (muted football / stadium line art)
-								Container(
-									height: 140,
-									decoration: BoxDecoration(
-										color: GameOnColors.surface.withOpacity(0.5),
-										borderRadius: BorderRadius.circular(GameOnDimens.radius),
-									),
-									child: Center(
-										child: Icon(
-											Icons.sports_soccer,
-											size: 64,
-											color: GameOnColors.textSecondary,
-										),
-									),
-								),
-								const SizedBox(height: 20),
-								// Branding
-								Text(
-									'GameOn',
-									textAlign: TextAlign.center,
-									style: Theme.of(context).textTheme.titleLarge?.copyWith(
-										fontSize: 28,
-									),
-								),
-								const SizedBox(height: 8),
-								Text(
-									'تسجيل الدخول',
-									textAlign: TextAlign.center,
-									style: Theme.of(context).textTheme.titleLarge,
-								),
-								const SizedBox(height: 24),
-								// Inputs
-								TextField(
-									keyboardType: TextInputType.emailAddress,
-									textInputAction: TextInputAction.next,
-									style: const TextStyle(color: GameOnColors.textPrimary),
-									decoration: const InputDecoration(
-										hintText: 'البريد الإلكتروني / رقم الهاتف',
-									),
-								),
-								const SizedBox(height: 12),
-								TextField(
-									obscureText: true,
-									textInputAction: TextInputAction.done,
-									style: const TextStyle(color: GameOnColors.textPrimary),
-									decoration: const InputDecoration(
-										hintText: 'كلمة المرور',
-									),
-								),
-								const Spacer(),
-								// Primary button
-								ElevatedButton(
-									style: GameOnTheme.primaryButtonStyle,
-									onPressed: () => context.go('/home'),
-									child: const Text('دخول'),
-								),
-								const SizedBox(height: 12),
-								// Secondary links
-								Row(
-									mainAxisAlignment: MainAxisAlignment.center,
-									children: [
-										Text(
-											'نسيت كلمة المرور؟',
-											style: Theme.of(context).textTheme.bodyMedium,
-										),
-										const SizedBox(width: 8),
-										InkWell(
-											onTap: () => context.go('/forgot'),
-											child: Text(
-												'نسيت كلمة المرور؟',
-												style: Theme.of(context).textTheme.bodyMedium,
-											),
-										),
-										const SizedBox(width: 8),
-										InkWell(
-											onTap: () => context.go('/signup'),
-											child: const Text(
-												'إنشاء حساب',
-												style: TextStyle(color: GameOnColors.primaryGreen),
-											),
-										),
-									],
-								),
-								const SizedBox(height: 12),
-							],
-						),
-					),
-				),
-			),
-		);
-	}
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
+class _LoginScreenState extends State<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
 
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _signIn() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    try {
+      final response = await supabase.auth.signInWithPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      if (response.user != null && mounted) {
+        context.go('/home');
+      }
+    } on AuthException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.message)),
+        );
+      }
+    }
+  }
+
+  String? _validateEmail(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'الرجاء إدخال البريد الإلكتروني';
+    }
+    if (!value.contains('@') || !value.contains('.')) {
+      return 'صيغة البريد الإلكتروني غير صحيحة';
+    }
+    return null;
+  }
+
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'الرجاء إدخال كلمة المرور';
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        body: SafeArea(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.all(KoraCornerDimens.spacing),
+            child: Form(
+              key: _formKey,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 12),
+                  Image.asset(
+                    'assets/images/word.png',
+                    height: 150,
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Kora Corner',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 28),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'تسجيل الدخول',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 24),
+                  TextFormField(
+                    controller: _emailController,
+                    validator: _validateEmail,
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    style: const TextStyle(color: KoraCornerColors.textPrimary),
+                    decoration: const InputDecoration(
+                      hintText: 'البريد الإلكتروني',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _passwordController,
+                    validator: _validatePassword,
+                    obscureText: true,
+                    textInputAction: TextInputAction.done,
+                    style: const TextStyle(color: KoraCornerColors.textPrimary),
+                    decoration: const InputDecoration(
+                      hintText: 'كلمة المرور',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: InkWell(
+                      onTap: () => context.go('/forgot-password'), // Corrected navigation
+                      child: const Text(
+                        'نسيت كلمة المرور؟',
+                        style: TextStyle(color: KoraCornerColors.primaryGreen),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    style: KoraCornerTheme.primaryButtonStyle,
+                    onPressed: _signIn,
+                    child: const Text('دخول'),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'ليس لديك حساب ؟ ',
+                        style: TextStyle(color: KoraCornerColors.textSecondary),
+                      ),
+                      InkWell(
+                        onTap: () => context.go('/signup'),
+                        child: const Text(
+                          'انشاء حساب',
+                          style: TextStyle(color: KoraCornerColors.primaryGreen),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: const [
+                      Expanded(
+                        child:
+                        Divider(thickness: 1, indent: 40, endIndent: 10),
+                      ),
+                      Text("أو"),
+                      Expanded(
+                        child:
+                        Divider(thickness: 1, indent: 10, endIndent: 40),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  const GoogleSignInButton(),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
