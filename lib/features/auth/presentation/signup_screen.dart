@@ -200,7 +200,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   const SizedBox(height: 12),
                   Image.asset('assets/images/word.png', height: 150),
                   const SizedBox(height: 20),
-                  Text('إنشاء حساب', textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleLarge),
+                  Text(
+                    'إنشاء حساب', 
+                    textAlign: TextAlign.center, 
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontFamily: 'Vexa',
+                          color: KoraCornerColors.primaryGreen,
+                          fontSize: 28,
+                        ),
+                  ),
                   const SizedBox(height: 24),
                   TextFormField(
                     controller: _usernameController,

@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 class KoraCornerColors {
   KoraCornerColors._();
 
-  static const Color background = Color(0xFF121212); // Dark Pitch
+  static const Color background = Color(0xFF0D0D0D);
   static const Color surface = Color(0xFF1A1A1A);
-  static const Color primaryGreen = Color(0xFF00FF87); // Kora Corner Green
+  static const Color primaryGreen = Color(0xFF80C456);
   static const Color accentGold = Color(0xFFFFC700); // Bright Gold
   static const Color textPrimary = Colors.white;
   static const Color textSecondary = Color(0xFFB3B3B3); // light gray
@@ -54,11 +54,11 @@ class KoraCornerTheme {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(KoraCornerDimens.radius),
-        borderSide: const BorderSide(color: Colors.transparent),
+        borderSide: const BorderSide(color: KoraCornerColors.primaryGreen, width: 2),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(KoraCornerDimens.radius),
-        borderSide: const BorderSide(color: Colors.transparent),
+        borderSide: const BorderSide(color: KoraCornerColors.primaryGreen, width: 2),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(KoraCornerDimens.radius),

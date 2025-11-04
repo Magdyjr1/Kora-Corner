@@ -145,9 +145,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   context.go('/login');
                 }
               },
-              style: ElevatedButton.styleFrom(
-                padding:
-                EdgeInsets.symmetric(vertical: Responsive.getSpacing(context)),
+              style: KoraCornerTheme.primaryButtonStyle.copyWith(
+                backgroundColor: MaterialStateProperty.all(KoraCornerColors.primaryGreen),
               ),
               child: ResponsiveText(
                 _currentPage < _pages.length - 1 ? 'Next' : 'Get Started',
@@ -159,7 +158,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           if (_currentPage < _pages.length - 1)
             TextButton(
               onPressed: () => context.go('/login'),
-              child: const Text('Skip'),
+              child: const Text(
+                'Skip',
+                style: TextStyle(color: KoraCornerColors.primaryGreen),
+                ),
             ),
         ],
       ),

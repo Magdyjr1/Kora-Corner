@@ -111,7 +111,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     ),
                     const SizedBox(height: 24),
                     ElevatedButton(
-                      style: KoraCornerTheme.primaryButtonStyle,
+                      style: KoraCornerTheme.primaryButtonStyle.copyWith(
+                        backgroundColor: MaterialStateProperty.all(KoraCornerColors.primaryGreen),
+                      ),
                       onPressed: _isLoading ? null : _sendResetCode,
                       child: _isLoading
                           ? const SizedBox(
@@ -124,10 +126,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     const SizedBox(height: 24),
                     TextButton(
                       onPressed: () => context.go('/login'),
-                      child: const Text('العودة إلى تسجيل الدخول'),
+                      child: const Text(
+                        'العودة إلى تسجيل الدخول',
+                        style: TextStyle(color: KoraCornerColors.primaryGreen),
+                      ),
                     ),
                   ],
-                ),
+                ),  
               ),
             ),
           ),

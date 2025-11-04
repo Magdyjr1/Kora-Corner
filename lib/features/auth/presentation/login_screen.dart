@@ -84,15 +84,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    'Kora Corner',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 28),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
                     'تسجيل الدخول',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontFamily: 'Vexa',
+                          color: KoraCornerColors.primaryGreen,
+                          fontSize: 28,
+                        ),
                   ),
                   const SizedBox(height: 24),
                   TextFormField(
