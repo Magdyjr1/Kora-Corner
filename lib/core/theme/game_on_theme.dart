@@ -5,7 +5,7 @@ class KoraCornerColors {
 
   static const Color background = Color(0xFF0D0D0D);
   static const Color surface = Color(0xFF1A1A1A);
-  static const Color primaryGreen = Color(0xFF80C456);
+  static const Color primaryGreen = Color(0xFF32A847);
   static const Color accentGold = Color(0xFFFFC700); // Bright Gold
   static const Color textPrimary = Colors.white;
   static const Color textSecondary = Color(0xFFB3B3B3); // light gray

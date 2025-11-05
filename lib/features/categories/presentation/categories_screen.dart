@@ -1,16 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/game_on_theme.dart'; // Import the new theme
 
-class CategoriesScreen extends StatelessWidget {
+// Supabase client
+final supabase = Supabase.instance.client;
+
+class CategoriesScreen extends StatefulWidget {
   const CategoriesScreen({super.key});
+
+  @override
+  State<CategoriesScreen> createState() => _CategoriesScreenState();
+}
+
+class _CategoriesScreenState extends State<CategoriesScreen> {
+  // Loading state for the Bank game specifically
+  bool _isBankGameLoading = false;
 
   final List<CategoryItem> _categories = const [
     CategoryItem(
       name: 'بنك',
       icon: Icons.account_balance,
-      color: AppColors.gameOnGreen,
+      color: KoraCornerColors.primaryGreen, // Corrected color
       route: '/bank',
     ),
     CategoryItem(
@@ -22,7 +35,7 @@ class CategoriesScreen extends StatelessWidget {
     CategoryItem(
       name: 'اهبد صح',
       icon: Icons.gps_fixed,
-      color: AppColors.gameOnGreen,
+      color: KoraCornerColors.primaryGreen, // Corrected color
       route: '/GuessRightScreen',
     ),
     CategoryItem(
@@ -34,7 +47,7 @@ class CategoriesScreen extends StatelessWidget {
     CategoryItem(
       name: 'باسورد',
       icon: Icons.lock,
-      color: AppColors.gameOnGreen,
+      color: KoraCornerColors.primaryGreen, // Corrected color
       route: '/password',
     ),
     CategoryItem(
@@ -46,7 +59,7 @@ class CategoriesScreen extends StatelessWidget {
     CategoryItem(
       name: 'توب 10',
       icon: Icons.format_list_numbered,
-      color: AppColors.gameOnGreen,
+      color: KoraCornerColors.primaryGreen, // Corrected color
       route: '/top-10',
     ),
     CategoryItem(
@@ -58,10 +71,53 @@ class CategoriesScreen extends StatelessWidget {
     CategoryItem(
       name: 'X O',
       icon: Icons.close,
-      color: AppColors.gameOnGreen,
+      color: KoraCornerColors.primaryGreen, // Corrected color
       route: '/XOXOChallengeScreen',
     ),
   ];
+
+  // This function loads data for the Bank game and then navigates
+  Future<void> _loadAndStartBankGame() async {
+    setState(() {
+      _isBankGameLoading = true;
+    });
+
+    try {
+      final response = await supabase.rpc(
+        'get_bank_questions',
+        params: {'p_count': 72}, // Corrected parameter name
+      );
+
+      if (mounted && response is List) {
+        if (response.isNotEmpty) {
+          context.go('/bank', extra: response);
+        } else {
+          _showErrorSnackBar('Failed to load questions. The server returned an empty list.');
+        }
+      } else {
+         _showErrorSnackBar('Failed to load questions. Invalid response from server.');
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorSnackBar('An error occurred: ${e.toString()}');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isBankGameLoading = false;
+        });
+      }
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -96,9 +152,16 @@ class CategoriesScreen extends StatelessWidget {
   }
 
   Widget _buildCategoryCard(BuildContext context, CategoryItem category) {
+    // Check if this card is the Bank game card and if it's loading
+    final isThisCardLoading = category.route == '/bank' && _isBankGameLoading;
+
     return GestureDetector(
-      onTap: () {
-        if (category.route == '/offside' || category.route == '/x-or-o') {
+      // Disable tap while loading
+      onTap: isThisCardLoading ? null : () {
+        if (category.route == '/bank') {
+          // Call the data loading function for the bank game
+          _loadAndStartBankGame();
+        } else if (category.route == '/offside' || category.route == '/x-or-o') {
           _showComingSoonDialog(context, category.name);
         } else {
           context.go(category.route);
@@ -152,24 +215,28 @@ class CategoriesScreen extends StatelessWidget {
                   Text(
                     category.name,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                          fontWeight: FontWeight.w600,
+                        ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Tap to start challenge',
+                    isThisCardLoading ? 'Loading Game...' : 'Tap to start challenge',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.lightGrey,
-                    ),
+                          color: AppColors.lightGrey,
+                        ),
                   ),
                 ],
               ),
             ),
-            Icon(
-              Icons.arrow_forward_ios,
-              color: category.color,
-              size: 16,
-            ),
+            // Show a loading indicator instead of the arrow
+            if (isThisCardLoading)
+              const CircularProgressIndicator()
+            else
+              Icon(
+                Icons.arrow_forward_ios,
+                color: category.color,
+                size: 16,
+              ),
           ],
         ),
       ),
@@ -197,7 +264,7 @@ class CategoriesScreen extends StatelessWidget {
             onPressed: () => Navigator.of(context).pop(),
             child: const Text(
               'OK',
-              style: TextStyle(color: AppColors.gameOnGreen),
+              style: TextStyle(color: KoraCornerColors.primaryGreen), // Corrected color
             ),
           ),
         ],

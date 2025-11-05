@@ -188,7 +188,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         resizeToAvoidBottomInset: true,
-        body: SafeArea(
+        body: Center(
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.all(KoraCornerDimens.spacing).copyWith(bottom: KoraCornerDimens.spacing * 2),
@@ -196,6 +196,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const SizedBox(height: 12),
                   Image.asset('assets/images/word.png', height: 150),

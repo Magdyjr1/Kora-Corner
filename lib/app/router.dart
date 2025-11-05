@@ -45,7 +45,10 @@ class AppRouter {
       ),
       GoRoute(
         path: '/bank',
-        builder: (context, state) => const BankScreen(),
+        builder: (context, state) {
+          final allGameQuestions = state.extra as List<dynamic>? ?? [];
+          return BankScreen(allGameQuestions: allGameQuestions);
+        },
       ),
       GoRoute(
         path: '/GuessRightScreen',
