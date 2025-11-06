@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/responsive.dart';
 
@@ -32,12 +33,43 @@ class _SplashScreenState extends State<SplashScreen>
     ));
 
     _animationController.forward();
-    
-    Future.delayed(const Duration(seconds: 3), () {
+
+    // التحقق من حالة المستخدم
+    _checkUserStatus();
+  }
+
+  Future<void> _checkUserStatus() async {
+    // انتظر 3 ثواني للـ splash animation
+    await Future.delayed(const Duration(seconds: 3));
+
+    if (!mounted) return;
+
+    // التحقق من حالة تسجيل الدخول من Supabase
+    final supabase = Supabase.instance.client;
+    final session = supabase.auth.currentSession;
+    final user = supabase.auth.currentUser;
+
+    // لو اليوزر مسجل دخول (عنده session صالح)
+    if (session != null && user != null) {
       if (mounted) {
+        context.go('/home'); // روح للـ home مباشرة
+      }
+      return;
+    }
+
+    // لو مش مسجل دخول، نشوف شاف الـ onboarding ولا لأ
+    final prefs = await SharedPreferences.getInstance();
+    final hasSeenOnboarding = prefs.getBool('hasSeenOnboarding') ?? false;
+
+    if (mounted) {
+      if (hasSeenOnboarding) {
+        // شاف الـ onboarding قبل كده، يروح login
+        context.go('/login');
+      } else {
+        // أول مرة، يروح onboarding
         context.go('/onboarding');
       }
-    });
+    }
   }
 
   @override
@@ -69,7 +101,8 @@ class _SplashScreenState extends State<SplashScreen>
                         height: Responsive.getAvatarSize(context) * 2.4,
                         decoration: BoxDecoration(
                           gradient: AppColors.primaryGradient,
-                          borderRadius: BorderRadius.circular(Responsive.getAvatarSize(context) * 0.48),
+                          borderRadius: BorderRadius.circular(
+                              Responsive.getAvatarSize(context) * 0.48),
                           boxShadow: [
                             BoxShadow(
                               color: AppColors.gameOnGreen.withOpacity(0.3),
@@ -87,7 +120,10 @@ class _SplashScreenState extends State<SplashScreen>
                       SizedBox(height: Responsive.getSpacing(context) * 2),
                       ResponsiveText(
                         'GameOn',
-                        style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                        style: Theme.of(context)
+                            .textTheme
+                            .displayLarge
+                            ?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: AppColors.white,
                           letterSpacing: 2,

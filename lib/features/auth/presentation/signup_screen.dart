@@ -2,9 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../core/theme/game_on_theme.dart';
+import '../../../core/theme/app_colors.dart';
 
-// This is the global variable we created in main.dart
 final supabase = Supabase.instance.client;
 
 class SignUpScreen extends StatefulWidget {
@@ -21,7 +20,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
 
-  // For instant validation
   Timer? _usernameDebounce;
   String? _usernameError;
   bool _isCheckingUsername = false;
@@ -137,7 +135,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final password = _passwordController.text.trim();
 
     try {
-      // Definitive final check on submission to prevent race conditions and RLS issues.
       final checks = await supabase
           .from('profiles')
           .select('username, email')
@@ -150,10 +147,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('هذا البريد الإلكتروني مستخدم بالفعل')));
         }
-        return; // Stop execution if a duplicate is found
+        return;
       }
 
-      // If all checks pass, proceed with Supabase auth signup
       await supabase.auth.signUp(email: email, password: password, data: {'username': username});
 
       if (mounted) {
@@ -164,7 +160,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
       }
     } on AuthException catch (error) {
       if (mounted) {
-        // This handles cases where the email exists in `auth.users` but not `profiles`
         final message = error.message.toLowerCase().contains('user already registered')
             ? 'هذا البريد الإلكتروني مسجل بالفعل'
             : 'Authentication Error: ${error.message}';
@@ -179,6 +174,37 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
+  InputDecoration _buildInputDecoration(String hint, {Widget? suffixIcon}) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(color: AppColors.lightGrey),
+      filled: true,
+      fillColor: AppColors.darkCard,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: AppColors.gameOnGreen, width: 2),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: AppColors.gameOnGreen, width: 2),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: AppColors.gameOnGreen, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: AppColors.red, width: 2),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: AppColors.red, width: 2),
+      ),
+      suffixIcon: suffixIcon,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isUsernameFormatValid = _usernameController.text.length >= 4;
@@ -187,11 +213,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
+        backgroundColor: AppColors.darkPitch,
         resizeToAvoidBottomInset: true,
         body: Center(
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.all(KoraCornerDimens.spacing).copyWith(bottom: KoraCornerDimens.spacing * 2),
+            padding: const EdgeInsets.all(16).copyWith(bottom: 32),
             child: Form(
               key: _formKey,
               child: Column(
@@ -202,13 +229,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   Image.asset('assets/images/word.png', height: 150),
                   const SizedBox(height: 20),
                   Text(
-                    'إنشاء حساب', 
-                    textAlign: TextAlign.center, 
+                    'إنشاء حساب',
+                    textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontFamily: 'Vexa',
-                          color: KoraCornerColors.primaryGreen,
-                          fontSize: 28,
-                        ),
+                      fontFamily: 'Vexa',
+                      color: AppColors.gameOnGreen,
+                      fontSize: 28,
+                    ),
                   ),
                   const SizedBox(height: 24),
                   TextFormField(
@@ -216,15 +243,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     validator: _validateUsername,
                     textInputAction: TextInputAction.next,
                     autovalidateMode: AutovalidateMode.onUserInteraction,
-                    style: const TextStyle(color: KoraCornerColors.textPrimary),
-                    decoration: InputDecoration(
-                      hintText: 'اسم المستخدم',
-                      errorText: _usernameError,
+                    style: const TextStyle(color: AppColors.white),
+                    decoration: _buildInputDecoration(
+                      'اسم المستخدم',
                       suffixIcon: _isCheckingUsername
-                          ? const Padding(padding: EdgeInsets.all(10.0), child: CircularProgressIndicator(strokeWidth: 2))
+                          ? const Padding(
+                          padding: EdgeInsets.all(10.0),
+                          child: CircularProgressIndicator(strokeWidth: 2))
                           : (_usernameError == null && isUsernameFormatValid
-                              ? const Icon(Icons.check, color: Colors.green)
-                              : null),
+                          ? const Icon(Icons.check, color: Colors.green)
+                          : null),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -234,15 +262,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
                     autovalidateMode: AutovalidateMode.onUserInteraction,
-                    style: const TextStyle(color: KoraCornerColors.textPrimary),
-                    decoration: InputDecoration(
-                      hintText: 'البريد الإلكتروني',
-                      errorText: _emailError,
+                    style: const TextStyle(color: AppColors.white),
+                    decoration: _buildInputDecoration(
+                      'البريد الإلكتروني',
                       suffixIcon: _isCheckingEmail
-                          ? const Padding(padding: EdgeInsets.all(10.0), child: CircularProgressIndicator(strokeWidth: 2))
+                          ? const Padding(
+                          padding: EdgeInsets.all(10.0),
+                          child: CircularProgressIndicator(strokeWidth: 2))
                           : (_emailError == null && isEmailFormatValid
-                              ? const Icon(Icons.check, color: Colors.green)
-                              : null),
+                          ? const Icon(Icons.check, color: Colors.green)
+                          : null),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -252,25 +281,48 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     obscureText: true,
                     textInputAction: TextInputAction.done,
                     autovalidateMode: AutovalidateMode.onUserInteraction,
-                    style: const TextStyle(color: KoraCornerColors.textPrimary),
-                    decoration: const InputDecoration(hintText: 'كلمة المرور'),
+                    style: const TextStyle(color: AppColors.white),
+                    decoration: _buildInputDecoration('كلمة المرور'),
                   ),
                   const SizedBox(height: 36),
                   ElevatedButton(
-                    style: KoraCornerTheme.primaryButtonStyle,
-                    onPressed: (_isLoading || _isCheckingUsername || _isCheckingEmail || _usernameError != null || _emailError != null) ? null : _signUp,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.gameOnGreen,
+                      foregroundColor: AppColors.black,
+                      minimumSize: const Size.fromHeight(56),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    onPressed: (_isLoading ||
+                        _isCheckingUsername ||
+                        _isCheckingEmail ||
+                        _usernameError != null ||
+                        _emailError != null)
+                        ? null
+                        : _signUp,
                     child: _isLoading
-                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
                         : const Text('إنشاء الحساب'),
                   ),
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('لديك حساب بالفعل؟ ', style: TextStyle(color: KoraCornerColors.textSecondary)),
+                      const Text('لديك حساب بالفعل؟ ',
+                          style: TextStyle(color: AppColors.lightGrey)),
                       InkWell(
                         onTap: () => context.go('/login'),
-                        child: const Text('تسجيل الدخول', style: TextStyle(color: KoraCornerColors.primaryGreen)),
+                        child: const Text('تسجيل الدخول',
+                            style: TextStyle(color: AppColors.gameOnGreen)),
                       ),
                     ],
                   ),

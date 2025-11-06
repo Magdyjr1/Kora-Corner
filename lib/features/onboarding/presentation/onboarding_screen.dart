@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-
-import '../../../core/theme/game_on_theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/responsive.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -17,23 +17,30 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   final List<OnboardingPage> _pages = [
     OnboardingPage(
-      title: 'Welcome to Kora Corner',
+      title: 'مرحبًا بك في كورة كورنر',
       description:
-      'Test your football knowledge with exciting quiz challenges and compete with friends!',
+      'اختبر معرفتك الكروية من خلال تحديات وأسئلة مثيرة وتنافس مع أصدقائك!',
+      icon: Icons.sports_soccer,
+      color: AppColors.gameOnGreen,
+      showImage: true,
     ),
     OnboardingPage(
-      title: 'Multiple Challenge Types',
+      title: 'أنواع متعددة من التحديات',
       description:
-      'Play Bank, Password, Risk, and many more unique football quiz formats designed for ultimate fun.',
+      'استمتع بأنماط لعب مختلفة مثل بنك، باسورد، ريسك، وغيرها من اختبارات كرة القدم الفريدة والممتعة!',
+      icon: Icons.quiz,
+      color: AppColors.brightGold,
+      showImage: false,
     ),
     OnboardingPage(
-      title: 'Compete & Learn',
+      title: 'تنافس وتعلّم',
       description:
-      'Track your progress, earn points, and discover interesting facts about football while having fun!',
+      'تابع تقدمك، اجمع النقاط، واكتشف حقائق شيقة عن كرة القدم أثناء استمتاعك باللعب!',
+      icon: Icons.emoji_events,
+      color: AppColors.gameOnGreen,
+      showImage: false,
     ),
   ];
-
-
 
   @override
   void dispose() {
@@ -41,15 +48,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
+  // حفظ أن المستخدم شاف الـ onboarding
+  Future<void> _completeOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('hasSeenOnboarding', true);
+    if (mounted) {
+      context.go('/login');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: KoraCornerColors.background,
+      backgroundColor: AppColors.darkPitch,
       body: SafeArea(
         child: ResponsiveContainer(
           child: Column(
             children: [
-              // ✅ Expanded يحل مشكلة الـ RenderBox
               Expanded(
                 child: PageView.builder(
                   controller: _pageController,
@@ -77,16 +92,38 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Image.asset(
+          page.showImage
+              ? Image.asset(
             'assets/images/word.png',
-            height: Responsive.getAvatarSize(context) * 2.0,
+            height: Responsive.getAvatarSize(context) * 2.4,
+          )
+              : Container(
+            width: Responsive.getAvatarSize(context) * 2.4,
+            height: Responsive.getAvatarSize(context) * 2.4,
+            decoration: BoxDecoration(
+              color: page.color,
+              borderRadius: BorderRadius.circular(
+                  Responsive.getAvatarSize(context) * 1.2),
+              boxShadow: [
+                BoxShadow(
+                  color: page.color.withOpacity(0.3),
+                  blurRadius: 20,
+                  spreadRadius: 5,
+                ),
+              ],
+            ),
+            child: Icon(
+              page.icon,
+              size: Responsive.getAvatarSize(context) * 1.2,
+              color: AppColors.black,
+            ),
           ),
           SizedBox(height: Responsive.getSpacing(context) * 3),
           ResponsiveText(
             page.title,
             style: Theme.of(context).textTheme.displayMedium?.copyWith(
               fontWeight: FontWeight.bold,
-              color: KoraCornerColors.textPrimary,
+              color: AppColors.white,
               fontSize: Responsive.getTitleSize(context) * 1.2,
             ),
             textAlign: TextAlign.center,
@@ -95,7 +132,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ResponsiveText(
             page.description,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: KoraCornerColors.textSecondary,
+              color: AppColors.lightGrey,
               height: 1.5,
               fontSize: Responsive.getBodySize(context),
             ),
@@ -123,8 +160,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 height: Responsive.getSpacing(context) * 0.5,
                 decoration: BoxDecoration(
                   color: _currentPage == index
-                      ? KoraCornerColors.primaryGreen
-                      : KoraCornerColors.textSecondary,
+                      ? AppColors.gameOnGreen
+                      : AppColors.grey,
                   borderRadius: BorderRadius.circular(
                       Responsive.getSpacing(context) * 0.25),
                 ),
@@ -142,14 +179,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     curve: Curves.easeInOut,
                   );
                 } else {
-                  context.go('/login');
+                  _completeOnboarding(); // حفظ الحالة والانتقال
                 }
               },
-              style: KoraCornerTheme.primaryButtonStyle.copyWith(
-                backgroundColor: MaterialStateProperty.all(KoraCornerColors.primaryGreen),
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(
+                    vertical: Responsive.getSpacing(context)),
               ),
               child: ResponsiveText(
-                _currentPage < _pages.length - 1 ? 'Next' : 'Get Started',
+                _currentPage < _pages.length - 1 ? 'التالي' : 'ابدأ الآن',
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
@@ -157,11 +195,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           SizedBox(height: Responsive.getSpacing(context)),
           if (_currentPage < _pages.length - 1)
             TextButton(
-              onPressed: () => context.go('/login'),
-              child: const Text(
-                'Skip',
-                style: TextStyle(color: KoraCornerColors.primaryGreen),
-                ),
+              onPressed: _completeOnboarding, // حفظ الحالة والانتقال
+              child: const Text('تخطي'),
             ),
         ],
       ),
@@ -172,9 +207,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 class OnboardingPage {
   final String title;
   final String description;
+  final IconData icon;
+  final Color color;
+  final bool showImage;
 
   OnboardingPage({
     required this.title,
     required this.description,
+    required this.icon,
+    required this.color,
+    required this.showImage,
   });
 }

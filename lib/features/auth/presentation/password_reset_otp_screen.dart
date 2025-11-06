@@ -32,7 +32,7 @@ class _PasswordResetOtpScreenState extends State<PasswordResetOtpScreen> {
   }
 
   void _startTimer() {
-    _timer?.cancel(); 
+    _timer?.cancel();
     _seconds = 59;
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
@@ -82,20 +82,18 @@ class _PasswordResetOtpScreenState extends State<PasswordResetOtpScreen> {
       final response = await supabase.auth.verifyOTP(
         email: widget.email,
         token: _code,
-        type: OtpType.recovery, // Use OtpType.recovery for password reset
+        type: OtpType.recovery,
       );
-      
+
       if (response.session != null && mounted) {
-        // On success, navigate to the final update password screen
         context.go('/update-password');
       } else {
-          if (mounted) {
-             ScaffoldMessenger.of(context).showSnackBar(
-               const SnackBar(content: Text('رمز تحقق غير صحيح أو منتهي الصلاحية')),
-             );
-          }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('رمز تحقق غير صحيح أو منتهي الصلاحية')),
+          );
+        }
       }
-
     } on AuthException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -109,16 +107,29 @@ class _PasswordResetOtpScreenState extends State<PasswordResetOtpScreen> {
     }
   }
 
+  Future<void> _resendOtp() async {
+    try {
+      await supabase.auth.resetPasswordForEmail(widget.email);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم إعادة إرسال الرمز')),
+        );
+        _startTimer();
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('فشل إعادة الإرسال')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-         appBar: AppBar(
-          title: const Text('التحقق من الرمز'),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-        ),
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(KoraCornerDimens.spacing),
@@ -126,31 +137,59 @@ class _PasswordResetOtpScreenState extends State<PasswordResetOtpScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 12),
-                Text('أدخل الرمز المرسل إلى ${widget.email}', textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
+                Text(
+                  'رمز التحقق',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'تم إرسال الرمز إلى بريدك الإلكتروني',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
                 const SizedBox(height: 24),
                 FittedBox(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(widget.digits, (i) {
-                      return Container(
-                        width: 48,
-                        height: 56,
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        decoration: BoxDecoration(
-                          color: KoraCornerColors.surface,
-                          borderRadius: BorderRadius.circular(KoraCornerDimens.radius),
-                          border: Border.all(color: KoraCornerColors.primaryGreen, width: 2),
-                        ),
-                        child: Center(
-                          child: TextField(
-                            controller: _controllers[i],
-                            focusNode: _focusNodes[i],
-                            keyboardType: TextInputType.number,
-                            textAlign: TextAlign.center,
-                            maxLength: 1,
-                            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                            decoration: const InputDecoration(counterText: '', border: InputBorder.none),
-                            onChanged: (v) => _onChanged(i, v),
+                      final reversedIndex = widget.digits - 1 - i;
+                      return Directionality(
+                        textDirection: TextDirection.ltr,
+                        child: Container(
+                          width: 52,
+                          height: 60,
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          decoration: BoxDecoration(
+                            color: KoraCornerColors.surface,
+                            borderRadius: BorderRadius.circular(KoraCornerDimens.radius),
+                            border: Border.all(
+                              color: KoraCornerColors.primaryGreen,
+                              width: 2,
+                            ),
+                          ),
+                          child: Center(
+                            child: TextField(
+                              controller: _controllers[reversedIndex],
+                              focusNode: _focusNodes[reversedIndex],
+                              keyboardType: TextInputType.number,
+                              textAlign: TextAlign.center,
+                              maxLength: 1,
+                              textDirection: TextDirection.ltr,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
+                                height: 1.2,
+                              ),
+                              decoration: const InputDecoration(
+                                counterText: '',
+                                border: InputBorder.none,
+                                isCollapsed: true,
+                                contentPadding: EdgeInsets.zero,
+                              ),
+                              onChanged: (v) => _onChanged(reversedIndex, v),
+                            ),
                           ),
                         ),
                       );
@@ -161,11 +200,21 @@ class _PasswordResetOtpScreenState extends State<PasswordResetOtpScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('${_seconds ~/ 60}:${(_seconds % 60).toString().padLeft(2, '0')}', style: const TextStyle(color: KoraCornerColors.accentGold)),
+                    Text(
+                      '${_seconds ~/ 60}:${(_seconds % 60).toString().padLeft(2, '0')}',
+                      style: const TextStyle(color: KoraCornerColors.accentGold),
+                    ),
                     const SizedBox(width: 12),
                     InkWell(
-                      onTap: _seconds == 0 ? _startTimer : null,
-                      child: Text('إعادة إرسال', style: TextStyle(color: _seconds == 0 ? KoraCornerColors.primaryGreen : KoraCornerColors.textSecondary)),
+                      onTap: _seconds == 0 ? _resendOtp : null,
+                      child: Text(
+                        'إعادة إرسال',
+                        style: TextStyle(
+                          color: _seconds == 0
+                              ? KoraCornerColors.primaryGreen
+                              : KoraCornerColors.textSecondary,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -174,7 +223,14 @@ class _PasswordResetOtpScreenState extends State<PasswordResetOtpScreen> {
                   style: KoraCornerTheme.primaryButtonStyle,
                   onPressed: _isLoading ? null : _verifyOtp,
                   child: _isLoading
-                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
                       : const Text('تحقق'),
                 ),
                 const SizedBox(height: 12),
