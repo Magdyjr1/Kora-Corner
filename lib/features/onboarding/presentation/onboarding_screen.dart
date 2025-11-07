@@ -48,7 +48,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
-  // حفظ أن المستخدم شاف الـ onboarding
   Future<void> _completeOnboarding() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('hasSeenOnboarding', true);
@@ -179,7 +178,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     curve: Curves.easeInOut,
                   );
                 } else {
-                  _completeOnboarding(); // حفظ الحالة والانتقال
+                  _completeOnboarding();
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -195,7 +194,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           SizedBox(height: Responsive.getSpacing(context)),
           if (_currentPage < _pages.length - 1)
             TextButton(
-              onPressed: _completeOnboarding, // حفظ الحالة والانتقال
+              onPressed: _completeOnboarding,
               child: const Text('تخطي'),
             ),
         ],
