@@ -1,6 +1,9 @@
   import 'dart:async';
   import 'package:flutter/material.dart';
   import '../../../core/theme/game_on_theme.dart';
+  import '../../../core/utils/ui_helpers.dart';
+  import '../../../core/services/logs_service.dart';
+  import '../../../ads/banner_ad_widget.dart';
   import 'package:go_router/go_router.dart';
   import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -22,6 +25,7 @@
     Timer? _timer;
     int _seconds = 59;
     bool _isLoading = false;
+    String? _errorMessage;
 
     @override
     void initState() {
@@ -70,14 +74,15 @@
 
     Future<void> _verifyOtp() async {
       if (widget.email == null || _code.length != widget.digits) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('الرجاء إدخال الرمز المكون من 6 أرقام')),
-        );
+        setState(() {
+          _errorMessage = 'الرجاء إدخال الرمز المكون من 6 أرقام';
+        });
         return;
       }
 
       setState(() {
         _isLoading = true;
+        _errorMessage = null;
       });
 
       try {
@@ -91,16 +96,24 @@
           context.go('/home');
         } else {
           if (mounted) {
-             ScaffoldMessenger.of(context).showSnackBar(
-               const SnackBar(content: Text('رمز تحقق غير صحيح أو منتهي الصلاحية')),
-             );
+            setState(() {
+              _errorMessage = 'رمز تحقق غير صحيح أو منتهي الصلاحية';
+            });
           }
         }
       } on AuthException catch (error) {
+        LogsService.logAuthError('OtpScreen._verifyOtp', error);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('رمز تحقق غير صحيح: ${error.message}')),
-          );
+          setState(() {
+            _errorMessage = UIHelpers.getUserFriendlyMessage(error);
+          });
+        }
+      } catch (error, stackTrace) {
+        LogsService.logAuthError('OtpScreen._verifyOtp', error, stackTrace: stackTrace);
+        if (mounted) {
+          setState(() {
+            _errorMessage = UIHelpers.getUserFriendlyMessage(error);
+          });
         }
       } finally {
         if (mounted) {
@@ -187,6 +200,10 @@
                       ),
                     ],
                   ),
+                  if (_errorMessage != null) ...[
+                    const SizedBox(height: 16),
+                    UIHelpers.buildErrorText(_errorMessage),
+                  ],
                   const Spacer(),
                   ElevatedButton(
                     style: KoraCornerTheme.primaryButtonStyle,
@@ -199,8 +216,10 @@
                 ],
               ),
             ),
-          ),
+            const BannerAdWidget(),
+          ],
         ),
-      );
-    }
+      ),
+    );
   }
+}

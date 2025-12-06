@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../widgets/persistent_bottom_nav_bar.dart';
+import '../../../ads/banner_ad_widget.dart';
 
 final supabase = Supabase.instance.client;
 
@@ -223,6 +224,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
             ),
+            const BannerAdWidget(),
             const PersistentBottomNavBar(currentIndex: 2),
           ],
         ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../widgets/persistent_bottom_nav_bar.dart';
+import '../../../ads/banner_ad_widget.dart';
 
 class RankScreen extends StatelessWidget {
   const RankScreen({super.key});
@@ -29,6 +30,7 @@ class RankScreen extends StatelessWidget {
             Expanded(
               child: _LeaderboardList(currentUserId: 'user4'),
             ),
+            const BannerAdWidget(),
             const PersistentBottomNavBar(currentIndex: 1),
           ],
         ),

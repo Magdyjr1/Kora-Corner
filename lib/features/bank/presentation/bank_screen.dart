@@ -1,42 +1,45 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/providers/bank_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/game_on_theme.dart';
+import '../../../ads/banner_ad_widget.dart';
 
-class BankScreen extends StatefulWidget {
+class BankScreen extends ConsumerStatefulWidget {
   final List<dynamic> allGameQuestions;
 
   const BankScreen({super.key, required this.allGameQuestions});
 
   @override
-  State<BankScreen> createState() => _BankScreenState();
+  ConsumerState<BankScreen> createState() => _BankScreenState();
 }
 
-class _BankScreenState extends State<BankScreen> {
+class _BankScreenState extends ConsumerState<BankScreen> {
   int _currentRound = 0;
   int _questionIndexInRound = 0;
 
-  // Timers
   bool _isTimerRunning = false;
   int _timerSeconds = 120;
   Timer? _timer;
 
-  // New state for the "last chance to bank" feature
   bool _isLastChance = false;
   int _lastChanceCountdown = 10;
   Timer? _lastChanceTimer;
 
   int _activeTeam = 1;
-  // Team 1
   int _team1Streak = 0;
   int _team1CurrentScore = 0;
   int _team1BankedScore = 0;
-  // Team 2
+
   int _team2Streak = 0;
   int _team2CurrentScore = 0;
   int _team2BankedScore = 0;
+
+  bool _isLoading = true;
+  String? _errorMessage;
 
   final List<String> _rounds = [
     'Round 1', 'Round 2', 'Round 3', 'Round 4', 'Round 5', 'Round 6',
@@ -45,7 +48,57 @@ class _BankScreenState extends State<BankScreen> {
   @override
   void initState() {
     super.initState();
-    _activeTeam = (_currentRound % 2) + 1;
+    _initializeQuestions();
+  }
+
+  Future<void> _initializeQuestions() async {
+    try {
+      // Check if we have enough questions
+      if (widget.allGameQuestions.isEmpty) {
+        setState(() {
+          _errorMessage = 'No questions available. Please select categories first.';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      if (widget.allGameQuestions.length < 72) {
+        setState(() {
+          _errorMessage = 'Not enough questions (need 72, found ${widget.allGameQuestions.length}). Please select more categories.';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Load questions after frame is built
+      await Future.microtask(() {
+        ref.read(bankProvider.notifier).loadRandomQuestions(widget.allGameQuestions);
+      });
+
+      // Wait a bit to ensure state is updated
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      // Verify questions were loaded
+      final loadedQuestions = ref.read(bankProvider);
+      if (loadedQuestions.isEmpty) {
+        setState(() {
+          _errorMessage = 'Failed to load questions. Please try again.';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      setState(() {
+        _activeTeam = (_currentRound % 2) + 1;
+        _isLoading = false;
+        _errorMessage = null;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Error loading questions: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -56,14 +109,14 @@ class _BankScreenState extends State<BankScreen> {
   }
 
   void _startTimer() {
-    if (_isLastChance) return; // Don't start main timer during last chance
+    if (_isLastChance) return;
     _timer?.cancel();
     setState(() => _isTimerRunning = true);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_timerSeconds > 0) {
         setState(() => _timerSeconds--);
       } else {
-        _endRound(); // End round when main timer finishes
+        _endRound();
       }
     });
   }
@@ -81,9 +134,8 @@ class _BankScreenState extends State<BankScreen> {
     });
   }
 
-  // Starts the 10-second "Last Chance" countdown
   void _startLastChance() {
-    _timer?.cancel(); // Stop the main timer
+    _timer?.cancel();
     _lastChanceTimer?.cancel();
     setState(() {
       _isLastChance = true;
@@ -95,7 +147,7 @@ class _BankScreenState extends State<BankScreen> {
       if (_lastChanceCountdown > 0) {
         setState(() => _lastChanceCountdown--);
       } else {
-        _endRound(); // End round if they don't bank in time
+        _endRound();
       }
     });
   }
@@ -106,7 +158,6 @@ class _BankScreenState extends State<BankScreen> {
 
     if (_currentRound < _rounds.length - 1) {
       setState(() {
-        // Reset scores for the team whose turn just ended, if they didn't bank
         if (_activeTeam == 1) {
           _team1CurrentScore = 0;
           _team1Streak = 0;
@@ -114,14 +165,13 @@ class _BankScreenState extends State<BankScreen> {
           _team2CurrentScore = 0;
           _team2Streak = 0;
         }
-        
-        // Move to next round
+
         _currentRound++;
         _questionIndexInRound = 0;
         _timerSeconds = 120;
         _isTimerRunning = false;
-        _isLastChance = false; // Reset last chance mode
-        _activeTeam = (_currentRound % 2) + 1; // Set team for the new round
+        _isLastChance = false;
+        _activeTeam = (_currentRound % 2) + 1;
       });
     } else {
       _finalizeScores();
@@ -129,7 +179,6 @@ class _BankScreenState extends State<BankScreen> {
   }
 
   void _moveToNextQuestion() {
-    // This is the 12th question (index 11), so trigger last chance
     if (_questionIndexInRound >= 11) {
       _startLastChance();
     } else {
@@ -142,11 +191,11 @@ class _BankScreenState extends State<BankScreen> {
       if (_activeTeam == 1) {
         _team1Streak++;
         _team1CurrentScore =
-            _team1CurrentScore == 0 ? 1 : (_team1CurrentScore * 2).clamp(0, 2048);
+        _team1CurrentScore == 0 ? 1 : (_team1CurrentScore * 2).clamp(0, 2048);
       } else {
         _team2Streak++;
         _team2CurrentScore =
-            _team2CurrentScore == 0 ? 1 : (_team2CurrentScore * 2).clamp(0, 2048);
+        _team2CurrentScore == 0 ? 1 : (_team2CurrentScore * 2).clamp(0, 2048);
       }
       HapticFeedback.lightImpact();
       _moveToNextQuestion();
@@ -182,15 +231,13 @@ class _BankScreenState extends State<BankScreen> {
       HapticFeedback.heavyImpact();
     });
 
-    // If bank was pressed during last chance, end the round immediately
-    if (wasLastChance) {
-      _endRound();
-    }
+    if (wasLastChance) _endRound();
   }
 
   void _finalizeScores() {
     _timer?.cancel();
     _lastChanceTimer?.cancel();
+
     String winnerText;
     if (_team1BankedScore > _team2BankedScore) {
       winnerText = 'Team 1 is the winner!';
@@ -237,24 +284,69 @@ class _BankScreenState extends State<BankScreen> {
         ),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              _buildRoundsRow(),
-              const SizedBox(height: 24),
-              _buildTimer(),
-              const SizedBox(height: 24),
-              _buildScoreRow(),
-              const SizedBox(height: 24),
-              _buildQuestionCard(),
-              const SizedBox(height: 24),
-              _buildAnswerButtons(),
-              const SizedBox(height: 24),
-              _buildScoresSummary(),
-            ],
-          ),
+        child: Column(
+          children: [
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _errorMessage != null
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.error_outline,
+                                  color: AppColors.red,
+                                  size: 64,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  _errorMessage!,
+                                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                        color: AppColors.white,
+                                      ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 24),
+                                ElevatedButton(
+                                  onPressed: () => context.go('/categories'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: KoraCornerColors.primaryGreen,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 32,
+                                      vertical: 16,
+                                    ),
+                                  ),
+                                  child: const Text('Back to Categories'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: [
+                              _buildRoundsRow(),
+                              const SizedBox(height: 24),
+                              _buildTimer(),
+                              const SizedBox(height: 24),
+                              _buildScoreRow(),
+                              const SizedBox(height: 24),
+                              _buildQuestionCard(),
+                              const SizedBox(height: 24),
+                              _buildAnswerButtons(),
+                              const SizedBox(height: 24),
+                              _buildScoresSummary(),
+                            ],
+                          ),
+                        ),
+            ),
+            const BannerAdWidget(),
+          ],
         ),
       ),
     );
@@ -300,60 +392,58 @@ class _BankScreenState extends State<BankScreen> {
         gradient: AppColors.cardGradient,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: (_isLastChance ? AppColors.red : KoraCornerColors.primaryGreen).withOpacity(0.3),
+          color: (_isLastChance ? AppColors.red : KoraCornerColors.primaryGreen)
+              .withOpacity(0.3),
           width: 2,
         ),
       ),
       child: Column(
         children: [
-          if (_isLastChance)
-            ...[
-              Text(
-                'LAST CHANCE TO BANK!',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppColors.red, fontWeight: FontWeight.bold),
+          if (_isLastChance) ...[
+            Text(
+              'LAST CHANCE TO BANK!',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: AppColors.red, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '$_lastChanceCountdown',
+              style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                color: AppColors.red,
+                fontWeight: FontWeight.bold,
+                fontSize: 48,
               ),
-              const SizedBox(height: 8),
-              Text(
-                '$_lastChanceCountdown',
-                style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                      color: AppColors.red,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 48,
-                    ),
+            ),
+          ] else ...[
+            Text(
+              _formatTime(_timerSeconds),
+              style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                color: _timerSeconds <= 10
+                    ? AppColors.red
+                    : KoraCornerColors.primaryGreen,
+                fontWeight: FontWeight.bold,
+                fontSize: 48,
               ),
-            ]
-          else
-            ...[
-              Text(
-                _formatTime(_timerSeconds),
-                style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                      color: _timerSeconds <= 10
-                          ? AppColors.red
-                          : KoraCornerColors.primaryGreen,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 48,
-                    ),
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 16,
-                runSpacing: 8,
-                children: [
-                  _buildTimerButton(
-                    icon: _isTimerRunning ? Icons.pause : Icons.play_arrow,
-                    onPressed: _isTimerRunning ? _pauseTimer : _startTimer,
-                    color: AppColors.brightGold,
-                  ),
-                  _buildTimerButton(
-                    icon: Icons.refresh,
-                    onPressed: _resetTimer,
-                    color: AppColors.red,
-                  ),
-                ],
-              ),
-            ],
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 16,
+              runSpacing: 8,
+              children: [
+                _buildTimerButton(
+                  icon: _isTimerRunning ? Icons.pause : Icons.play_arrow,
+                  onPressed: _isTimerRunning ? _pauseTimer : _startTimer,
+                  color: AppColors.brightGold,
+                ),
+                _buildTimerButton(
+                  icon: Icons.refresh,
+                  onPressed: _resetTimer,
+                  color: AppColors.red,
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -376,7 +466,6 @@ class _BankScreenState extends State<BankScreen> {
             BoxShadow(
               color: color.withOpacity(0.3),
               blurRadius: 8,
-              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -386,7 +475,7 @@ class _BankScreenState extends State<BankScreen> {
   }
 
   Widget _buildScoreRow() {
-     return Row(
+    return Row(
       children: [
         Expanded(
           child: _buildTeamScoreColumn(
@@ -428,11 +517,11 @@ class _BankScreenState extends State<BankScreen> {
             width: isActive ? 3 : 2),
         boxShadow: isActive
             ? [
-                BoxShadow(
-                    color: color.withOpacity(0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4))
-              ]
+          BoxShadow(
+              color: color.withOpacity(0.15),
+              blurRadius: 8,
+              offset: const Offset(0, 4))
+        ]
             : [],
       ),
       child: Column(
@@ -464,26 +553,50 @@ class _BankScreenState extends State<BankScreen> {
   }
 
   Widget _buildQuestionCard() {
-    // Return an empty container if it's last chance mode
     if (_isLastChance) {
-        return const SizedBox(height: 243); // Keep the space to avoid UI jumps
-    }
-    
-    final currentQuestionIndex = (_currentRound * 12) + _questionIndexInRound;
-
-    if (widget.allGameQuestions.isEmpty ||
-        currentQuestionIndex >= widget.allGameQuestions.length) {
-      return const Center(child: Text("Loading questions..."));
+      return const SizedBox(height: 280);
     }
 
-    final questionData = widget.allGameQuestions[currentQuestionIndex];
+    final question = ref
+        .watch(bankProvider.notifier)
+        .getQuestion(_currentRound, _questionIndexInRound);
+
+    if (question == null) {
+      return Container(
+        width: double.infinity,
+        height: 280,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          gradient: AppColors.cardGradient,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+              color: AppColors.red.withOpacity(0.3), width: 2),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, color: AppColors.red, size: 48),
+            const SizedBox(height: 16),
+            Text(
+              "Error loading question",
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: AppColors.red,
+                  fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
     final questionText =
-        questionData['question_text'] as String? ?? 'Error loading question.';
+        question['question_text'] as String? ?? 'Error loading question.';
     final correctAnswer =
-        questionData['correct_answer'] as String? ?? 'Error loading answer.';
+        question['correct_answer'] as String? ?? 'Error loading answer.';
 
     return Container(
       width: double.infinity,
+      height: 280,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: AppColors.cardGradient,
@@ -492,6 +605,7 @@ class _BankScreenState extends State<BankScreen> {
             color: KoraCornerColors.primaryGreen.withOpacity(0.3), width: 2),
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
             'السؤال (${_questionIndexInRound + 1} / 12)',
@@ -500,20 +614,37 @@ class _BankScreenState extends State<BankScreen> {
                 fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          Text(
-            questionText,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.5),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'الإجابة: $correctAnswer',
-            style: const TextStyle(
-              color: KoraCornerColors.primaryGreen,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
+          Expanded(
+            child: SingleChildScrollView(
+              child: Text(
+                questionText,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.5),
+                textAlign: TextAlign.center,
+              ),
             ),
-            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            decoration: BoxDecoration(
+              color: KoraCornerColors.primaryGreen.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: KoraCornerColors.primaryGreen.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Text(
+              'الإجابة: $correctAnswer',
+              style: const TextStyle(
+                color: KoraCornerColors.primaryGreen,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
@@ -521,15 +652,13 @@ class _BankScreenState extends State<BankScreen> {
   }
 
   Widget _buildAnswerButtons() {
-    // Only show the Bank button during last chance
     if (_isLastChance) {
       return Center(
         child: ElevatedButton(
           onPressed: _bankScore,
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.brightGold,
-            padding:
-                const EdgeInsets.symmetric(vertical: 20, horizontal: 60),
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 60),
           ),
           child: const Text('Bank',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -547,9 +676,9 @@ class _BankScreenState extends State<BankScreen> {
             ElevatedButton(
               onPressed: _correctAnswer,
               style: ElevatedButton.styleFrom(
-                backgroundColor: KoraCornerColors.primaryGreen, // Corrected color
+                backgroundColor: KoraCornerColors.primaryGreen,
                 padding:
-                    const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+                const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
               ),
               child: const Text('إجابة صحيحة',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -559,7 +688,7 @@ class _BankScreenState extends State<BankScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.red,
                 padding:
-                    const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+                const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
               ),
               child: const Text('إجابة غلط',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -573,7 +702,7 @@ class _BankScreenState extends State<BankScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.brightGold,
               padding:
-                  const EdgeInsets.symmetric(vertical: 20, horizontal: 60),
+              const EdgeInsets.symmetric(vertical: 20, horizontal: 60),
             ),
             child: const Text('Bank',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -584,7 +713,7 @@ class _BankScreenState extends State<BankScreen> {
   }
 
   Widget _buildScoresSummary() {
-     return Container(
+    return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(

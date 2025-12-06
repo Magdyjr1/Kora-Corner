@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/game_on_theme.dart';
+import '../../../ads/banner_ad_widget.dart';
+import '../../../core/utils/ui_helpers.dart';
+import '../../../core/services/logs_service.dart';
 
 final supabase = Supabase.instance.client;
 
@@ -19,9 +22,10 @@ class PasswordResetOtpScreen extends StatefulWidget {
 class _PasswordResetOtpScreenState extends State<PasswordResetOtpScreen> {
   late List<TextEditingController> _controllers;
   late List<FocusNode> _focusNodes;
-  Timer? _timer;
-  int _seconds = 59;
-  bool _isLoading = false;
+    Timer? _timer;
+    int _seconds = 59;
+    bool _isLoading = false;
+    String? _errorMessage;
 
   @override
   void initState() {
@@ -70,13 +74,16 @@ class _PasswordResetOtpScreenState extends State<PasswordResetOtpScreen> {
 
   Future<void> _verifyOtp() async {
     if (_code.length != widget.digits) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('الرجاء إدخال الرمز المكون من 6 أرقام')),
-      );
+      setState(() {
+        _errorMessage = 'الرجاء إدخال الرمز المكون من 6 أرقام';
+      });
       return;
     }
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
     try {
       final response = await supabase.auth.verifyOTP(
@@ -89,16 +96,24 @@ class _PasswordResetOtpScreenState extends State<PasswordResetOtpScreen> {
         context.go('/update-password');
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('رمز تحقق غير صحيح أو منتهي الصلاحية')),
-          );
+          setState(() {
+            _errorMessage = 'رمز تحقق غير صحيح أو منتهي الصلاحية';
+          });
         }
       }
     } on AuthException catch (error) {
+      LogsService.logAuthError('PasswordResetOtpScreen._verifyOtp', error);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('رمز تحقق غير صحيح: ${error.message}')),
-        );
+        setState(() {
+          _errorMessage = UIHelpers.getUserFriendlyMessage(error);
+        });
+      }
+    } catch (error, stackTrace) {
+      LogsService.logAuthError('PasswordResetOtpScreen._verifyOtp', error, stackTrace: stackTrace);
+      if (mounted) {
+        setState(() {
+          _errorMessage = UIHelpers.getUserFriendlyMessage(error);
+        });
       }
     } finally {
       if (mounted) {
@@ -108,19 +123,18 @@ class _PasswordResetOtpScreenState extends State<PasswordResetOtpScreen> {
   }
 
   Future<void> _resendOtp() async {
+    setState(() => _errorMessage = null);
     try {
       await supabase.auth.resetPasswordForEmail(widget.email);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم إعادة إرسال الرمز')),
-        );
         _startTimer();
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      LogsService.logAuthError('PasswordResetOtpScreen._resendOtp', error, stackTrace: stackTrace);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('فشل إعادة الإرسال')),
-        );
+        setState(() {
+          _errorMessage = 'فشل إعادة الإرسال. يرجى المحاولة مرة أخرى';
+        });
       }
     }
   }
@@ -195,30 +209,34 @@ class _PasswordResetOtpScreenState extends State<PasswordResetOtpScreen> {
                       );
                     }),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      '${_seconds ~/ 60}:${(_seconds % 60).toString().padLeft(2, '0')}',
-                      style: const TextStyle(color: KoraCornerColors.accentGold),
-                    ),
-                    const SizedBox(width: 12),
-                    InkWell(
-                      onTap: _seconds == 0 ? _resendOtp : null,
-                      child: Text(
-                        'إعادة إرسال',
-                        style: TextStyle(
-                          color: _seconds == 0
-                              ? KoraCornerColors.primaryGreen
-                              : KoraCornerColors.textSecondary,
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '${_seconds ~/ 60}:${(_seconds % 60).toString().padLeft(2, '0')}',
+                        style: const TextStyle(color: KoraCornerColors.accentGold),
+                      ),
+                      const SizedBox(width: 12),
+                      InkWell(
+                        onTap: _seconds == 0 ? _resendOtp : null,
+                        child: Text(
+                          'إعادة إرسال',
+                          style: TextStyle(
+                            color: _seconds == 0
+                                ? KoraCornerColors.primaryGreen
+                                : KoraCornerColors.textSecondary,
+                          ),
                         ),
                       ),
-                    ),
+                    ],
+                  ),
+                  if (_errorMessage != null) ...[
+                    const SizedBox(height: 16),
+                    UIHelpers.buildErrorText(_errorMessage),
                   ],
-                ),
-                const Spacer(),
+                  const Spacer(),
                 ElevatedButton(
                   style: KoraCornerTheme.primaryButtonStyle,
                   onPressed: _isLoading ? null : _verifyOtp,
@@ -236,7 +254,8 @@ class _PasswordResetOtpScreenState extends State<PasswordResetOtpScreen> {
                 const SizedBox(height: 12),
               ],
             ),
-          ),
+            const BannerAdWidget(),
+          ],
         ),
       ),
     );

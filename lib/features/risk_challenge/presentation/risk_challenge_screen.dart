@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/challenge_providers.dart';
+import '../../../core/providers/risk_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../core/utils/riverpod_timer.dart';
@@ -32,13 +33,6 @@ class _RiskChallengeScreenState extends ConsumerState<RiskChallengeScreen> {
       ref.read(riskTimerProvider.notifier).startTimer();
     });
   }
-
-  final List<String> _categories = const [
-    'Football Legends',
-    'World Cup Winners',
-    'Premier League',
-    'Champions League',
-  ];
 
   final List<int> _pointValues = const [5, 10, 20, 40];
 
@@ -89,7 +83,7 @@ class _RiskChallengeScreenState extends ConsumerState<RiskChallengeScreen> {
     );
   }
 
-  void _onCardTap(int categoryIndex, int buttonIndex) {
+  void _onCardTap(int categoryIndex, int buttonIndex, String categoryName, List<RiskQuestion> questions) {
     if (_isCardUsed(categoryIndex, buttonIndex)) {
       return;
     }
@@ -99,23 +93,30 @@ class _RiskChallengeScreenState extends ConsumerState<RiskChallengeScreen> {
       _selectedButtonIndex = buttonIndex;
     });
 
+    final question = questions[buttonIndex];
+    final points = _pointValues[buttonIndex];
+    final doubled = _isCardDoubled(categoryIndex, buttonIndex);
+
     showDialog(
       context: context,
       builder: (ctx) {
-        final points = _pointValues[buttonIndex];
-        final doubled = _isCardDoubled(categoryIndex, buttonIndex);
         return AlertDialog(
           backgroundColor: const Color(0xFF0F0F0F),
-          title: Text(_categories[categoryIndex], style: const TextStyle(color: Colors.white)),
+          title: Text(categoryName, style: const TextStyle(color: Colors.white)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Question for $points points${doubled ? " (x2)" : ""}:',
                   style: const TextStyle(color: Colors.white70)),
               const SizedBox(height: 12),
-              Text('Who scored the winning goal in the final?', style: const TextStyle(color: Colors.white)),
+              Text(question.question, style: const TextStyle(color: Colors.white, fontSize: 16)),
+              const SizedBox(height: 16),
+              const Divider(color: Colors.white24),
               const SizedBox(height: 12),
-              Text('Answer: Example Player', style: const TextStyle(color: Colors.greenAccent)),
+              Text('Answer:', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              Text(question.answer, style: const TextStyle(color: Colors.greenAccent, fontSize: 16)),
             ],
           ),
           actions: [
@@ -130,6 +131,7 @@ class _RiskChallengeScreenState extends ConsumerState<RiskChallengeScreen> {
       },
     );
   }
+
   void _onCorrectPressed() {
     if (_selectedCategoryIndex == null || _selectedButtonIndex == null) return;
     final cat = _selectedCategoryIndex!;
@@ -154,6 +156,7 @@ class _RiskChallengeScreenState extends ConsumerState<RiskChallengeScreen> {
       _selectedButtonIndex = null;
     });
   }
+
   void _onWrongPressed() {
     if (_selectedCategoryIndex == null || _selectedButtonIndex == null) return;
     final cat = _selectedCategoryIndex!;
@@ -168,89 +171,98 @@ class _RiskChallengeScreenState extends ConsumerState<RiskChallengeScreen> {
         _isDoubleUsed = false;
       }
 
-      // Deselect
       _selectedCategoryIndex = null;
       _selectedButtonIndex = null;
     });
   }
 
-  Widget _buildTimerControlBar(BuildContext context, int timerSeconds, RiskTimerNotifier timerNotifier) {
-    return Consumer(
-      builder: (context, ref, _) {
-        final notifier = ref.read(riskTimerProvider.notifier);
-        final seconds = ref.watch(riskTimerProvider);
+  // التايمر المحدّث بنفس تصميم GuessRightScreen
+  Widget _buildTimerControlBar(BuildContext context) {
+    final timerNotifier = ref.read(riskTimerProvider.notifier);
+    final seconds = ref.watch(riskTimerProvider);
 
-        return Container(
-          padding: EdgeInsets.all(Responsive.getSpacing(context)),
-          decoration: BoxDecoration(
-            gradient: AppColors.cardGradient,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppColors.gameOnGreen.withOpacity(0.3),
-              width: 2,
+    return Center(
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.8,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: AppColors.cardGradient,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.gameOnGreen.withOpacity(0.3),
+            width: 2,
+          ),
+        ),
+        child: Column(
+          children: [
+            Text(
+              timerNotifier.formattedTime,
+              style: TextStyle(
+                color: seconds <= 10 ? AppColors.red : AppColors.brightGold,
+                fontWeight: FontWeight.bold,
+                fontSize: 48,
+              ),
             ),
-          ),
-          child: Column(
-            children: [
-              Text(
-                notifier.formattedTime,
-                style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                  color: seconds <= 10 ? AppColors.red : AppColors.gameOnGreen,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 48,
+            const SizedBox(height: 12),
+
+            // أزرار التايمر
+            Wrap(
+              spacing: 16,
+              alignment: WrapAlignment.center,
+              children: [
+                _timerButton(
+                  icon: timerNotifier.isRunning ? Icons.pause : Icons.play_arrow,
+                  onTap: () {
+                    if (timerNotifier.isRunning) {
+                      timerNotifier.pauseTimer();
+                    } else {
+                      timerNotifier.resumeTimer();
+                    }
+                    setState(() {}); // ← تحديث فوراً
+                  },
+                  color: AppColors.brightGold,
                 ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 16,
-                children: [
-                  _buildTimerButton(
-                    icon: notifier.isRunning ? Icons.pause : Icons.play_arrow,
-                    onPressed: () {
-                      if (notifier.isRunning) {
-                        notifier.pauseTimer();
-                      } else {
-                        notifier.resumeTimer();
-                      }
-                      setState(() {});
-                    },
-                    color: AppColors.brightGold,
-                  ),
-                  _buildTimerButton(
-                    icon: Icons.refresh,
-                    onPressed: () {
-                      notifier.resetTimer();
-                      setState(() {});
-                    },
-                    color: AppColors.red,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
+                _timerButton(
+                  icon: Icons.refresh,
+                  onTap: () {
+                    timerNotifier.resetTimer();
+                    timerNotifier.startTimer(); // ← إضافة startTimer بعد reset
+                    setState(() {});
+                  },
+                  color: AppColors.red,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-
-  Widget _buildTimerButton({
+  // زرار التايمر المتحرك - نفس التصميم بالظبط
+  Widget _timerButton({
     required IconData icon,
-    required VoidCallback onPressed,
+    required VoidCallback onTap,
     required Color color,
   }) {
     return GestureDetector(
-      onTap: onPressed,
-      child: Container(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
         width: 55,
         height: 55,
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(30),
-          boxShadow: [BoxShadow(color: color.withOpacity(0.3), blurRadius: 8, offset: const Offset(0,4))],
+          borderRadius: BorderRadius.circular(40),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.4),
+              blurRadius: 8,
+              spreadRadius: 1,
+            ),
+          ],
         ),
-        child: Icon(icon, color: AppColors.black, size: 26),
+        child: Icon(icon, color: Colors.black, size: 28),
       ),
     );
   }
@@ -314,6 +326,17 @@ class _RiskChallengeScreenState extends ConsumerState<RiskChallengeScreen> {
   }
 
   Widget _buildCategoriesGrid(BuildContext context) {
+    final categoryNames = ref.watch(randomFourCategoriesProvider);
+
+    if (categoryNames.isEmpty) {
+      return const Center(
+        child: Text(
+          'Loading categories...',
+          style: TextStyle(color: Colors.white),
+        ),
+      );
+    }
+
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -323,15 +346,143 @@ class _RiskChallengeScreenState extends ConsumerState<RiskChallengeScreen> {
         crossAxisSpacing: Responsive.getSpacing(context),
         mainAxisSpacing: Responsive.getSpacing(context),
       ),
-      itemCount: 4,
+      itemCount: categoryNames.length,
       itemBuilder: (context, categoryIndex) {
-        return _buildCategoryCard(context, categoryIndex);
+        final categoryName = categoryNames[categoryIndex];
+        return _CategoryCard(
+          key: ValueKey('$categoryName-$categoryIndex'),
+          categoryIndex: categoryIndex,
+          categoryName: categoryName,
+          onCardTap: _onCardTap,
+          isCardDoubled: _isCardDoubled,
+          isCardUsed: _isCardUsed,
+          toggleDoubleCard: _toggleDoubleCard,
+          pointValues: _pointValues,
+        );
       },
     );
   }
 
-  Widget _buildCategoryCard(BuildContext context, int categoryIndex) {
-    final category = _categories[categoryIndex];
+  Widget _buildAnswerControlsAndSummary(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              onPressed: _onCorrectPressed,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.green,
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+              ),
+              child: const Text('إجابة صحيحة', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(width: 16),
+            ElevatedButton(
+              onPressed: _onWrongPressed,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.red,
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+              ),
+              child: const Text('إجابة غلط', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: AppColors.cardGradient,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.brightGold.withOpacity(0.3), width: 2),
+          ),
+          child: Column(
+            children: [
+              Text('Team 1: $_team1Score',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppColors.gameOnGreen, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Text('Team 2: $_team2Score',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppColors.brightGold, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              Text('Active Team: $_activeTeam', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: AppColors.white)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.darkPitch,
+      appBar: AppBar(
+        title: const Text('Risk Challenge'),
+        backgroundColor: AppColors.darkPitch,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/categories'),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_outlined),
+            onPressed: () {
+              ref.read(randomFourCategoriesProvider.notifier).refreshAll();
+            },
+            tooltip: 'Refresh All Categories',
+          ),
+        ],
+      ),
+      body: ResponsiveContainer(
+        child: ResponsivePadding(
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              children: [
+                SizedBox(height: Responsive.getSpacing(context)),
+                _buildTimerControlBar(context),
+                SizedBox(height: Responsive.getSpacing(context) * 2),
+                _buildScoreInputFields(context),
+                SizedBox(height: Responsive.getSpacing(context) * 2),
+                _buildCategoriesGrid(context),
+                SizedBox(height: Responsive.getSpacing(context) * 2),
+                _buildAnswerControlsAndSummary(context),
+                SizedBox(height: Responsive.getSpacing(context) * 2),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Widget منفصل لكل كاتيجوري
+class _CategoryCard extends ConsumerWidget {
+  final int categoryIndex;
+  final String categoryName;
+  final Function(int, int, String, List<RiskQuestion>) onCardTap;
+  final bool Function(int, int) isCardDoubled;
+  final bool Function(int, int) isCardUsed;
+  final Function(int, int) toggleDoubleCard;
+  final List<int> pointValues;
+
+  const _CategoryCard({
+    super.key,
+    required this.categoryIndex,
+    required this.categoryName,
+    required this.onCardTap,
+    required this.isCardDoubled,
+    required this.isCardUsed,
+    required this.toggleDoubleCard,
+    required this.pointValues,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final questionsAsync = ref.watch(categoryQuestionsProvider(categoryName));
 
     return Container(
       padding: EdgeInsets.all(Responsive.getSpacing(context)),
@@ -344,37 +495,78 @@ class _RiskChallengeScreenState extends ConsumerState<RiskChallengeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ResponsiveText(
-            category,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: AppColors.white,
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: ResponsiveText(
+                  categoryName,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppColors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 2,
+                ),
+              ),
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: () {
+                  ref.read(randomFourCategoriesProvider.notifier).refreshCategory(categoryIndex);
+                  ref.invalidate(categoryQuestionsProvider(categoryName));
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppColors.brightGold.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.brightGold.withOpacity(0.5), width: 1),
+                  ),
+                  child: Icon(
+                    Icons.refresh,
+                    color: AppColors.brightGold,
+                    size: 18,
+                  ),
+                ),
+              ),
+            ],
           ),
           SizedBox(height: Responsive.getSpacing(context) * 0.5),
           Expanded(
-            child: Column(
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      Expanded(child: _buildCardButton(context, categoryIndex, 0)), // 5 points
-                      const SizedBox(width: 8),
-                      Expanded(child: _buildCardButton(context, categoryIndex, 1)), // 10 points
-                    ],
-                  ),
+            child: questionsAsync.when(
+              data: (questions) {
+                return Column(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Expanded(child: _buildCardButton(context, 0, questions)),
+                          const SizedBox(width: 8),
+                          Expanded(child: _buildCardButton(context, 1, questions)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Expanded(child: _buildCardButton(context, 2, questions)),
+                          const SizedBox(width: 8),
+                          Expanded(child: _buildCardButton(context, 3, questions)),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
+              loading: () => Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.gameOnGreen,
+                  strokeWidth: 2,
                 ),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: Row(
-                    children: [
-                      Expanded(child: _buildCardButton(context, categoryIndex, 2)), // 20 points
-                      const SizedBox(width: 8),
-                      Expanded(child: _buildCardButton(context, categoryIndex, 3)), // 40 points
-                    ],
-                  ),
-                ),
-              ],
+              ),
+              error: (error, stack) => Center(
+                child: Icon(Icons.error_outline, color: AppColors.red, size: 24),
+              ),
             ),
           ),
         ],
@@ -382,14 +574,14 @@ class _RiskChallengeScreenState extends ConsumerState<RiskChallengeScreen> {
     );
   }
 
-  Widget _buildCardButton(BuildContext context, int categoryIndex, int buttonIndex) {
-    final points = _pointValues[buttonIndex];
-    final doubled = _isCardDoubled(categoryIndex, buttonIndex);
-    final isUsed = _isCardUsed(categoryIndex, buttonIndex);
+  Widget _buildCardButton(BuildContext context, int buttonIndex, List<RiskQuestion> questions) {
+    final points = pointValues[buttonIndex];
+    final doubled = isCardDoubled(categoryIndex, buttonIndex);
+    final isUsed = isCardUsed(categoryIndex, buttonIndex);
 
     return GestureDetector(
-      onTap: () => _onCardTap(categoryIndex, buttonIndex),
-      onLongPress: isUsed ? null : () => _toggleDoubleCard(categoryIndex, buttonIndex),
+      onTap: () => onCardTap(categoryIndex, buttonIndex, categoryName, questions),
+      onLongPress: isUsed ? null : () => toggleDoubleCard(categoryIndex, buttonIndex),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
@@ -440,7 +632,7 @@ class _RiskChallengeScreenState extends ConsumerState<RiskChallengeScreen> {
                   child: const Text(
                     'x2',
                     style: TextStyle(
-                        fontSize: 8, // حجم أصغر
+                        fontSize: 8,
                         fontWeight: FontWeight.bold,
                         color: Colors.black
                     ),
@@ -448,97 +640,6 @@ class _RiskChallengeScreenState extends ConsumerState<RiskChallengeScreen> {
                 ),
               ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAnswerControlsAndSummary(BuildContext context) {
-    final total = _team1Score + _team2Score;
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton(
-              onPressed: _onCorrectPressed,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.green,
-                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-              ),
-              child: const Text('إجابة صحيحة', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(width: 16),
-            ElevatedButton(
-              onPressed: _onWrongPressed,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.red,
-                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-              ),
-              child: const Text('إجابة غلط', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: AppColors.cardGradient,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.brightGold.withOpacity(0.3), width: 2),
-          ),
-          child: Column(
-            children: [
-              Text('Team 1: $_team1Score',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppColors.gameOnGreen, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text('Team 2: $_team2Score',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppColors.brightGold, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
-              Text('Active Team: $_activeTeam', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: AppColors.white)),
-              const SizedBox(height: 12),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final timerState = ref.watch(riskTimerProvider);
-    final timerNotifier = ref.read(riskTimerProvider.notifier);
-
-    return Scaffold(
-      backgroundColor: AppColors.darkPitch,
-      appBar: AppBar(
-        title: const Text('Risk Challenge'),
-        backgroundColor: AppColors.darkPitch,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/categories'),
-        ),
-      ),
-      body: ResponsiveContainer(
-        child: ResponsivePadding(
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            child: Column(
-              children: [
-                SizedBox(height: Responsive.getSpacing(context)),
-                _buildTimerControlBar(context, timerState, timerNotifier),
-                SizedBox(height: Responsive.getSpacing(context) * 2),
-                _buildScoreInputFields(context),
-                SizedBox(height: Responsive.getSpacing(context) * 2),
-                _buildCategoriesGrid(context),
-                SizedBox(height: Responsive.getSpacing(context) * 2),
-                _buildAnswerControlsAndSummary(context),
-                SizedBox(height: Responsive.getSpacing(context) * 2),
-              ],
-            ),
-          ),
         ),
       ),
     );

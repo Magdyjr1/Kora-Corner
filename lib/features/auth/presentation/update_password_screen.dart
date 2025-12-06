@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/game_on_theme.dart';
+import '../../../core/utils/ui_helpers.dart';
+import '../../../core/services/logs_service.dart';
+import '../../../ads/banner_ad_widget.dart';
 
 final supabase = Supabase.instance.client;
 
@@ -17,6 +20,7 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
   final _confirmPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -29,7 +33,10 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
     try {
       await supabase.auth.updateUser(
@@ -37,22 +44,21 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم تحديث كلمة المرور بنجاح')),
-        );
         context.go('/login'); // Navigate back to login on success
       }
     } on AuthException catch (error) {
+      LogsService.logAuthError('UpdatePasswordScreen._updatePassword', error);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${error.message}')),
-        );
+        setState(() {
+          _errorMessage = UIHelpers.getUserFriendlyMessage(error);
+        });
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      LogsService.logAuthError('UpdatePasswordScreen._updatePassword', error, stackTrace: stackTrace);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('An unexpected error occurred: $error')),
-        );
+        setState(() {
+          _errorMessage = UIHelpers.getUserFriendlyMessage(error);
+        });
       }
     } finally {
       if (mounted) {
@@ -126,6 +132,10 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
                       hintText: 'تأكيد كلمة المرور الجديدة',
                     ),
                   ),
+                  if (_errorMessage != null) ...[
+                    const SizedBox(height: 8),
+                    UIHelpers.buildErrorText(_errorMessage),
+                  ],
                   const SizedBox(height: 24),
                   ElevatedButton(
                     style: KoraCornerTheme.primaryButtonStyle,
@@ -142,7 +152,8 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
                 ],
               ),
             ),
-          ),
+            const BannerAdWidget(),
+          ],
         ),
       ),
     );

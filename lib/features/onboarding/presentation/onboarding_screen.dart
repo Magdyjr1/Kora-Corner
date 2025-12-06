@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/responsive.dart';
+import '../../../ads/banner_ad_widget.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -79,6 +80,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
               ),
               _buildBottomSection(),
+              const BannerAdWidget(),
             ],
           ),
         ),

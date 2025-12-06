@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/ui_helpers.dart';
+import '../../../core/services/logs_service.dart';
+import '../../../ads/banner_ad_widget.dart';
 import 'google_sign_in_button.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -17,6 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  String? _authError;
 
   @override
   void dispose() {
@@ -28,6 +32,8 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _signIn() async {
     if (!_formKey.currentState!.validate()) return;
 
+    setState(() => _authError = null);
+
     try {
       final response = await supabase.auth.signInWithPassword(
         email: _emailController.text.trim(),
@@ -37,10 +43,18 @@ class _LoginScreenState extends State<LoginScreen> {
         context.go('/home');
       }
     } on AuthException catch (error) {
+      LogsService.logAuthError('LoginScreen._signIn', error);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message)),
-        );
+        setState(() {
+          _authError = UIHelpers.getUserFriendlyMessage(error);
+        });
+      }
+    } catch (error, stackTrace) {
+      LogsService.logAuthError('LoginScreen._signIn', error, stackTrace: stackTrace);
+      if (mounted) {
+        setState(() {
+          _authError = UIHelpers.getUserFriendlyMessage(error);
+        });
       }
     }
   }
@@ -172,6 +186,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
+                  if (_authError != null) ...[
+                    const SizedBox(height: 8),
+                    UIHelpers.buildErrorText(_authError),
+                  ],
                   const SizedBox(height: 8),
                   Align(
                     alignment: Alignment.centerLeft,
@@ -243,6 +261,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ],
               ),
             ),
+            const BannerAdWidget(),
           ),
         ),
       ),

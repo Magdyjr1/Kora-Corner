@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/game_on_theme.dart';
+import '../../../core/utils/ui_helpers.dart';
+import '../../../core/services/logs_service.dart';
+import '../../../ads/banner_ad_widget.dart';
 
 final supabase = Supabase.instance.client;
 
@@ -16,6 +19,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _emailController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  String? _errorMessage;
+  String? _successMessage;
 
   @override
   void dispose() {
@@ -27,7 +32,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _successMessage = null;
+    });
 
     try {
       await supabase.auth.resetPasswordForEmail(
@@ -35,22 +44,21 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم إرسال رمز استعادة كلمة المرور إلى بريدك الإلكتروني')),
-        );
         context.go('/password-reset-otp', extra: {'email': _emailController.text.trim()});
       }
     } on AuthException catch (error) {
+      LogsService.logAuthError('ForgotPasswordScreen._sendResetCode', error);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${error.message}')),
-        );
+        setState(() {
+          _errorMessage = UIHelpers.getUserFriendlyMessage(error);
+        });
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      LogsService.logAuthError('ForgotPasswordScreen._sendResetCode', error, stackTrace: stackTrace);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('An unexpected error occurred: $error')),
-        );
+        setState(() {
+          _errorMessage = UIHelpers.getUserFriendlyMessage(error);
+        });
       }
     } finally {
       if (mounted) {
@@ -109,6 +117,33 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         hintText: 'البريد الإلكتروني',
                       ),
                     ),
+                    if (_errorMessage != null) ...[
+                      const SizedBox(height: 8),
+                      UIHelpers.buildErrorText(_errorMessage),
+                    ],
+                    if (_successMessage != null) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: KoraCornerColors.primaryGreen.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: KoraCornerColors.primaryGreen.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.check_circle_outline, color: KoraCornerColors.primaryGreen, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _successMessage!,
+                                style: TextStyle(color: KoraCornerColors.primaryGreen, fontSize: 14),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 24),
                     ElevatedButton(
                       style: KoraCornerTheme.primaryButtonStyle.copyWith(
@@ -135,7 +170,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 ),  
               ),
             ),
-          ),
+            const BannerAdWidget(),
+          ],
         ),
       ),
     );

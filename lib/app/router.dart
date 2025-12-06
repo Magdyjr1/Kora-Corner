@@ -21,6 +21,8 @@ import '../features/top_10/presentation/top_10_screen.dart';
 import '../features/who_am_i/presentation/who_am_i_screen.dart';
 import '../features/who_is_in_picture/presentation/who_is_in_picture_screen.dart';
 import '../features/xo/presentation/xo_screen.dart';
+import '../widgets/back_to_home_wrapper.dart';
+import '../ads/ads_manager.dart';
 
 
 class AppRouter {
@@ -41,50 +43,74 @@ class AppRouter {
       ),
       GoRoute(
         path: '/categories',
-        builder: (context, state) => const CategoriesScreen(),
+        builder: (context, state) => const BackToHomeWrapper(
+          child: CategoriesScreen(),
+        ),
       ),
       GoRoute(
         path: '/bank',
         builder: (context, state) {
+          // Show interstitial ad on navigation to heavy screen
+          AdsManager.instance.showInterstitialIfAvailable();
           final allGameQuestions = state.extra as List<dynamic>? ?? [];
-          return BankScreen(allGameQuestions: allGameQuestions);
+          return BackToHomeWrapper(
+            child: BankScreen(allGameQuestions: allGameQuestions),
+          );
         },
       ),
       GoRoute(
         path: '/GuessRightScreen',
-        builder: (context, state) => const GuessRightScreen(),
+        builder: (context, state) => const BackToHomeWrapper(
+          child: GuessRightScreen(),
+        ),
       ),
       GoRoute(
         path: '/OffsideChallengeScreen',
-        builder: (context, state) => const OffsideChallengeScreen(),
+        builder: (context, state) => const BackToHomeWrapper(
+          child: OffsideChallengeScreen(),
+        ),
       ),
       GoRoute(
         path: '/password',
-        builder: (context, state) => const PasswordScreen(),
+        builder: (context, state) => const BackToHomeWrapper(
+          child: PasswordScreen(),
+        ),
       ),
       GoRoute(
         path: '/three-in-one-setup',
-        builder: (context, state) => const ThreeInOneSetupScreen(),
+        builder: (context, state) => const BackToHomeWrapper(
+          child: ThreeInOneSetupScreen(),
+        ),
       ),
       GoRoute(
         path: '/top-10',
-        builder: (context, state) => const Top10Screen(),
+        builder: (context, state) => const BackToHomeWrapper(
+          child: Top10Screen(),
+        ),
       ),
       GoRoute(
         path: '/who-is-in-picture',
-        builder: (context, state) => const WhoIsInPictureScreen(),
+        builder: (context, state) => const BackToHomeWrapper(
+          child: WhoIsInPictureScreen(),
+        ),
       ),
       GoRoute(
         path: '/who-am-i',
-        builder: (context, state) => const WhoAmIScreen(),
+        builder: (context, state) => const BackToHomeWrapper(
+          child: WhoAmIScreen(),
+        ),
       ),
       GoRoute(
         path: '/XOXOChallengeScreen',
-        builder: (context, state) => const XOChallengeScreen(),
+        builder: (context, state) => const BackToHomeWrapper(
+          child: XOChallengeScreen(),
+        ),
       ),
       GoRoute(
         path: '/risk-challenge',
-        builder: (context, state) => const RiskChallengeScreen(),
+        builder: (context, state) => const BackToHomeWrapper(
+          child: RiskChallengeScreen(),
+        ),
       ),
       GoRoute(
         path: '/login',
@@ -106,7 +132,7 @@ class AppRouter {
         path: '/forgot-password',
         builder: (context, state) => const ForgotPasswordScreen(),
       ),
-        GoRoute(
+      GoRoute(
         path: '/password-reset-otp',
         builder: (context, state) {
           final extra = state.extra as Map<String, dynamic>?;
@@ -114,7 +140,7 @@ class AppRouter {
           return PasswordResetOtpScreen(email: email);
         },
       ),
-        GoRoute(
+      GoRoute(
         path: '/update-password',
         builder: (context, state) => const UpdatePasswordScreen(),
       ),
@@ -124,11 +150,15 @@ class AppRouter {
       ),
       GoRoute(
         path: '/rank',
-        builder: (context, state) => const RankScreen(),
+        builder: (context, state) => const BackToHomeWrapper(
+          child: RankScreen(),
+        ),
       ),
       GoRoute(
         path: '/profile',
-        builder: (context, state) => const ProfileScreen(),
+        builder: (context, state) => const BackToHomeWrapper(
+          child: ProfileScreen(),
+        ),
       ),
     ],
   );

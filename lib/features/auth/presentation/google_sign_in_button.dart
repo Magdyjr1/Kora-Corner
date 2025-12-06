@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/services/logs_service.dart';
 
 // This is the global variable we created in main.dart
 final supabase = Supabase.instance.client;
@@ -45,19 +46,13 @@ Future<void> signInWithGoogle(BuildContext context) async {
     );
 
     if (res.user != null && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم تسجيل الدخول بنجاح!')),
-      );
       context.go('/home');
     }
 
-  } catch (error) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error during Google sign in: $error')),
-      );
-    }
-    print('Error during Google sign in: $error');
+  } catch (error, stackTrace) {
+    LogsService.logAuthError('GoogleSignIn', error, stackTrace: stackTrace);
+    // Error is logged internally, no SnackBar shown to user
+    // Navigation will simply not occur on error
   }
 }
 

@@ -66,7 +66,7 @@ class _ThreeInOneSetupScreenState extends State<ThreeInOneSetupScreen> {
     return Scaffold(
       backgroundColor: AppColors.darkPitch,
       appBar: AppBar(
-        title: const Text('3 في 1'),
+        title: const Text('3X1'),
         backgroundColor: AppColors.darkPitch,
         elevation: 0,
         leading: IconButton(

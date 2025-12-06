@@ -9,23 +9,71 @@ import '../../../core/utils/responsive.dart';
 class Top10Screen extends ConsumerWidget {
   const Top10Screen({super.key});
 
-  final List<String> _playerNames = const [
-    'Lionel Messi',
-    'Cristiano Ronaldo',
-    'Kylian Mbappé',
-    'Robert Lewandowski',
-    'Mohamed Salah',
-    'Erling Haaland',
-    'Kevin De Bruyne',
-    'Virgil van Dijk',
-    'Luka Modrić',
-    'Neymar Jr',
-  ];
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(top10Provider);
     final notifier = ref.read(top10Provider.notifier);
+
+    // Loading state
+    if (state.isLoading) {
+      return Scaffold(
+        backgroundColor: AppColors.darkPitch,
+        appBar: AppBar(
+          title: const Text('Top 10'),
+          backgroundColor: AppColors.darkPitch,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.go('/categories'),
+          ),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(
+            color: AppColors.gameOnGreen,
+          ),
+        ),
+      );
+    }
+
+    // Error state
+    if (state.error != null) {
+      return Scaffold(
+        backgroundColor: AppColors.darkPitch,
+        appBar: AppBar(
+          title: const Text('Top 10'),
+          backgroundColor: AppColors.darkPitch,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.go('/categories'),
+          ),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                color: Colors.red,
+                size: 48,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Error loading question',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: AppColors.white,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: () => notifier.refreshQuestion(),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.darkPitch,
@@ -38,6 +86,11 @@ class Top10Screen extends ConsumerWidget {
           onPressed: () => context.go('/categories'),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.sync),
+            onPressed: () => notifier.refreshQuestion(),
+            tooltip: 'New Question',
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => notifier.resetSelection(),
@@ -219,12 +272,14 @@ class Top10Screen extends ConsumerWidget {
         ),
       ),
       child: Column(
-        children: List.generate(_playerNames.length, (index) {
-          final isSelected = state.selectedPlayers[index];
+        children: List.generate(state.players.length, (index) {
+          final isSelected = state.selectedPlayers.length > index
+              ? state.selectedPlayers[index]
+              : false;
           return _buildPlayerItem(
             context,
             index + 1,
-            _playerNames[index],
+            state.players[index],
             isSelected,
                 () => notifier.togglePlayer(index),
           );
@@ -357,7 +412,7 @@ class Top10Screen extends ConsumerWidget {
           ),
           SizedBox(width: Responsive.getSpacing(context) * 0.5),
           ResponsiveText(
-            'Selected: $selectedCount / 10 players',
+            'Selected: $selectedCount / ${state.players.length} players',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               color: selectedCount > 0
                   ? AppColors.gameOnGreen

@@ -1,35 +1,45 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/game_on_theme.dart';
 import '../../../widgets/persistent_bottom_nav_bar.dart';
+import '../../../ads/banner_ad_widget.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: KoraCornerColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildUserStatsRow(context),
-                    const SizedBox(height: 32),
-                    _buildMainIllustration(context),
-                    const SizedBox(height: 32),
-                    _buildChallengeCards(context),
-                  ],
+    return WillPopScope(
+      onWillPop: () async {
+        // Immediately exit the app without confirmation
+        SystemNavigator.pop();
+        return false; // Prevent default back behavior
+      },
+      child: Scaffold(
+        backgroundColor: KoraCornerColors.background,
+        body: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildUserStatsRow(context),
+                      const SizedBox(height: 32),
+                      _buildMainIllustration(context),
+                      const SizedBox(height: 32),
+                      _buildChallengeCards(context),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const PersistentBottomNavBar(currentIndex: 0),
-          ],
+              const BannerAdWidget(),
+              const PersistentBottomNavBar(currentIndex: 0),
+            ],
+          ),
         ),
       ),
     );
@@ -170,7 +180,7 @@ class HomeScreen extends StatelessWidget {
         _buildChallengeCard(
           context: context,
           title: 'صباحو تحدي',
-          subtitle: 'Morning Challenge',
+          subtitle: 'Saba7o',
           icon: Icons.wb_sunny,
           color: KoraCornerColors.accentGold,
           onTap: () => context.go('/categories'),
@@ -178,8 +188,8 @@ class HomeScreen extends StatelessWidget {
         const SizedBox(height: 16),
         _buildChallengeCard(
           context: context,
-          title: '3 في 1',
-          subtitle: '3 in 1 Challenge',
+          title: ' تلاتة ف واحد ',
+          subtitle: '3 X 1',
           icon: Icons.casino,
           color: KoraCornerColors.primaryGreen,
           onTap: () => context.go('/three-in-one-setup'),

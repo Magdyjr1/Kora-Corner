@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../widgets/manual_scoring_panel.dart';
 
 class XOChallengeScreen extends StatefulWidget {
   const XOChallengeScreen({super.key});
@@ -213,6 +214,12 @@ class _XOChallengeScreenState extends State<XOChallengeScreen>
               ),
             ),
           ),
+          // Manual Scoring Panel
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: const ManualScoringPanel(),
+          ),
+          const SizedBox(height: 16),
 
           // الشبكة
           Expanded(

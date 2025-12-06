@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/ui_helpers.dart';
+import '../../../core/services/logs_service.dart';
+import '../../../ads/banner_ad_widget.dart';
 
 final supabase = Supabase.instance.client;
 
@@ -142,10 +145,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
       if (checks.isNotEmpty) {
         final isUsernameTaken = checks.any((p) => p['username'] == username);
-        if (isUsernameTaken) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('اسم المستخدم هذا مستخدم بالفعل')));
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('هذا البريد الإلكتروني مستخدم بالفعل')));
+        if (mounted) {
+          setState(() {
+            if (isUsernameTaken) {
+              _usernameError = 'اسم المستخدم هذا مستخدم بالفعل';
+            } else {
+              _emailError = 'هذا البريد الإلكتروني مستخدم بالفعل';
+            }
+          });
         }
         return;
       }
@@ -153,21 +160,27 @@ class _SignUpScreenState extends State<SignUpScreen> {
       await supabase.auth.signUp(email: email, password: password, data: {'username': username});
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم إرسال رمز التحقق إلى بريدك الإلكتروني')),
-        );
+        // Success - navigate to OTP screen
         context.go('/otp', extra: {'email': email});
       }
     } on AuthException catch (error) {
+      LogsService.logAuthError('SignUpScreen._signUp', error);
       if (mounted) {
-        final message = error.message.toLowerCase().contains('user already registered')
-            ? 'هذا البريد الإلكتروني مسجل بالفعل'
-            : 'Authentication Error: ${error.message}';
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+        setState(() {
+          final message = error.message.toLowerCase();
+          if (message.contains('user already registered') || message.contains('email')) {
+            _emailError = 'هذا البريد الإلكتروني مسجل بالفعل';
+          } else {
+            _emailError = UIHelpers.getUserFriendlyMessage(error);
+          }
+        });
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      LogsService.logAuthError('SignUpScreen._signUp', error, stackTrace: stackTrace);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('An unexpected error occurred: $error')));
+        setState(() {
+          _emailError = UIHelpers.getUserFriendlyMessage(error);
+        });
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -329,6 +342,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ],
               ),
             ),
+            const BannerAdWidget(),
           ),
         ),
       ),

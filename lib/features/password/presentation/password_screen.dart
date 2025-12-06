@@ -1,44 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/providers/password_provider.dart';
 
-class PasswordScreen extends StatefulWidget {
+class PasswordScreen extends ConsumerStatefulWidget {
   const PasswordScreen({super.key});
 
   @override
-  State<PasswordScreen> createState() => _PasswordScreenState();
+  ConsumerState<PasswordScreen> createState() => _PasswordScreenState();
 }
 
-class _PasswordScreenState extends State<PasswordScreen> {
-  final List<String> _playerNames = [
-    'Lionel Messi',
-    'Cristiano Ronaldo',
-    'Neymar Jr',
-    'Kylian Mbappé',
-    'Mohamed Salah',
-    'Robert Lewandowski',
-    'Kevin De Bruyne',
-    'Virgil van Dijk',
-    'Luka Modrić',
-    'Erling Haaland',
-  ];
-
-  final List<bool> _revealedBoxes = List.generate(10, (index) => false);
-  int _currentPlayerIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _resetGrid();
-  }
+class _PasswordScreenState extends ConsumerState<PasswordScreen> {
+  final List<bool> _revealedBoxes = List.generate(8, (_) => false);
 
   void _resetGrid() {
     setState(() {
-      _revealedBoxes.fillRange(0, 10, false);
-      _currentPlayerIndex = 0;
+      _revealedBoxes.fillRange(0, 8, false);
     });
-    HapticFeedback.lightImpact();
+    ref.refresh(passwordProvider);
   }
 
   void _toggleBox(int index) {
@@ -46,22 +26,18 @@ class _PasswordScreenState extends State<PasswordScreen> {
       setState(() {
         _revealedBoxes[index] = true;
       });
-      HapticFeedback.lightImpact();
     }
-  }
-
-  String _getPlayerName(int index) {
-    return _playerNames[index];
   }
 
   @override
   Widget build(BuildContext context) {
+    final playersAsync = ref.watch(passwordProvider);
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
       backgroundColor: AppColors.darkPitch,
       appBar: AppBar(
-        title: const Text('Password Challenge'),
+        title: const Text('تحدي الباسورد'),
         backgroundColor: AppColors.darkPitch,
         elevation: 0,
         leading: IconButton(
@@ -82,11 +58,34 @@ class _PasswordScreenState extends State<PasswordScreen> {
               children: [
                 _buildInstructions(),
                 const SizedBox(height: 24),
-                _buildGrid(),
+                playersAsync.when(
+                  data: (players) => _buildGrid(players),
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(
+                        color: AppColors.gameOnGreen),
+                  ),
+                  error: (err, _) => Center(
+                    child: Column(
+                      children: [
+                        const Icon(Icons.error,
+                            color: Colors.red, size: 60),
+                        const SizedBox(height: 10),
+                        const Text('فشل تحميل اللاعبين',
+                            style: TextStyle(color: Colors.white)),
+                        Text('$err',
+                            style:
+                            const TextStyle(color: Colors.white70)),
+                        const SizedBox(height: 10),
+                        ElevatedButton(
+                          onPressed: () => ref.refresh(passwordProvider),
+                          child: const Text('إعادة المحاولة'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 32),
                 _buildNewPlayersButton(),
-                const SizedBox(height: 32),
-                _buildProgressIndicator(),
               ],
             ),
           ),
@@ -116,7 +115,7 @@ class _PasswordScreenState extends State<PasswordScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Password Challenge',
+            'تحدي الباسورد',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.bold,
               color: AppColors.gameOnGreen,
@@ -124,7 +123,7 @@ class _PasswordScreenState extends State<PasswordScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Tap on the numbered boxes to reveal the player names. Guess the password by identifying the pattern!',
+            'اضغط على المربعات لتكشف أسماء اللاعبين. حاول تخمن الباسورد من خلال التعرف على النمط!',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: AppColors.lightGrey,
               height: 1.4,
@@ -136,9 +135,9 @@ class _PasswordScreenState extends State<PasswordScreen> {
     );
   }
 
-  Widget _buildGrid() {
+  Widget _buildGrid(List<Player> players) {
     final crossAxisCount =
-    MediaQuery.of(context).size.width > 600 ? 3 : 2; // Responsive grid
+    MediaQuery.of(context).size.width > 600 ? 4 : 2;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -158,18 +157,16 @@ class _PasswordScreenState extends State<PasswordScreen> {
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
         ),
-        itemCount: 10,
+        itemCount: players.length,
         itemBuilder: (context, index) {
-          return _buildGridBox(index + 1);
+          return _buildGridBox(players[index], index);
         },
       ),
     );
   }
 
-  Widget _buildGridBox(int number) {
-    final index = number - 1;
+  Widget _buildGridBox(Player player, int index) {
     final isRevealed = _revealedBoxes[index];
-
     return GestureDetector(
       onTap: () => _toggleBox(index),
       child: AnimatedContainer(
@@ -192,15 +189,6 @@ class _PasswordScreenState extends State<PasswordScreen> {
                 : AppColors.brightGold,
             width: 2,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: isRevealed
-                  ? Colors.black.withOpacity(0.2)
-                  : AppColors.brightGold.withOpacity(0.3),
-              blurRadius: isRevealed ? 4 : 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
         ),
         child: Center(
           child: isRevealed
@@ -214,22 +202,21 @@ class _PasswordScreenState extends State<PasswordScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                _getPlayerName(index),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                player.name,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
                   color: AppColors.gameOnGreen,
                   fontWeight: FontWeight.w600,
                 ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           )
               : Text(
-            '$number',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            '${index + 1}',
+            style: const TextStyle(
               color: AppColors.black,
               fontWeight: FontWeight.bold,
+              fontSize: 18,
             ),
           ),
         ),
@@ -258,64 +245,6 @@ class _PasswordScreenState extends State<PasswordScreen> {
             borderRadius: BorderRadius.circular(12),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildProgressIndicator() {
-    final revealedCount = _revealedBoxes.where((revealed) => revealed).length;
-    final progress = revealedCount / 10;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: AppColors.cardGradient,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.gameOnGreen.withOpacity(0.3),
-          width: 2,
-        ),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Progress',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                '$revealedCount/10',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: AppColors.gameOnGreen,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          LinearProgressIndicator(
-            value: progress,
-            backgroundColor: AppColors.grey.withOpacity(0.3),
-            valueColor:
-            AlwaysStoppedAnimation<Color>(AppColors.gameOnGreen),
-            minHeight: 8,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            progress == 1.0
-                ? 'All players revealed! Great job!'
-                : 'Keep revealing to find the pattern!',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppColors.lightGrey,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
       ),
     );
   }

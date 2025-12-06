@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/providers/guess_right_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/riverpod_timer.dart';
+import '../../../widgets/manual_scoring_panel.dart';
+import '../../../ads/banner_ad_widget.dart';
 
 class GuessRightScreen extends ConsumerStatefulWidget {
   const GuessRightScreen({super.key});
@@ -12,20 +15,22 @@ class GuessRightScreen extends ConsumerStatefulWidget {
 }
 
 class _GuessRightScreenState extends ConsumerState<GuessRightScreen> {
-  final List<bool> _revealedAnswers = List.generate(5, (_) => false);
+  final Set<int> _revealedIds = {}; // الإجابات المفتوحة
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.refresh(guessQuestionsProvider);
       ref.read(riskTimerProvider.notifier).startTimer();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final timerState = ref.watch(riskTimerProvider);
     final timerNotifier = ref.read(riskTimerProvider.notifier);
+    final seconds = ref.watch(riskTimerProvider);
+    final questionsAsync = ref.watch(guessQuestionsProvider);
 
     return Scaffold(
       backgroundColor: AppColors.darkPitch,
@@ -33,196 +38,239 @@ class _GuessRightScreenState extends ConsumerState<GuessRightScreen> {
         backgroundColor: AppColors.darkPitch,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => context.go('/categories'),
         ),
         title: const Text(
-          'خمن صح',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          'اهبد صح',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+      body: SafeArea(
         child: Column(
           children: [
-            _buildTimerControlBar(context, timerState, timerNotifier),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+            // التايمر
+            Center(
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.8,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: AppColors.cardGradient,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: AppColors.gameOnGreen.withOpacity(0.3),
+                    width: 2,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      timerNotifier.formattedTime,
+                      style: TextStyle(
+                        color: seconds <= 10
+                            ? AppColors.red
+                            : AppColors.brightGold,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 48,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // أزرار التايمر
+                    Wrap(
+                      spacing: 16,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        _timerButton(
+                          icon: timerNotifier.isRunning
+                              ? Icons.pause
+                              : Icons.play_arrow,
+                          onTap: () {
+                            if (timerNotifier.isRunning) {
+                              timerNotifier.pauseTimer();
+                            } else {
+                              timerNotifier.resumeTimer();
+                            }
+                            setState(() {}); // ← تحديث فوراً
+                          },
+                          color: AppColors.brightGold,
+                        ),
+                        _timerButton(
+                          icon: Icons.refresh,
+                          onTap: () {
+                            timerNotifier.resetTimer();
+                            timerNotifier.startTimer(); // ← إضافة startTimer بعد reset
+                            setState(() {});
+                          },
+                          color: AppColors.red,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
             const SizedBox(height: 20),
-            ...List.generate(5, (index) => _buildQuestionCard(context, index)),
+            const ManualScoringPanel(),
+            const SizedBox(height: 20),
+
+            // الأسئلة من Supabase
+            questionsAsync.when(
+              data: (questions) => Column(
+                children: questions
+                    .asMap()
+                    .entries
+                    .map((e) => _buildQuestionCard(e.value, e.key + 1))
+                    .toList(),
+              ),
+              loading: () => const Center(
+                child: CircularProgressIndicator(color: AppColors.gameOnGreen),
+              ),
+              error: (err, _) => Center(
+                child: Column(
+                  children: [
+                    const Icon(Icons.error, color: Colors.red, size: 60),
+                    const SizedBox(height: 10),
+                    const Text('فشل تحميل الأسئلة',
+                        style: TextStyle(color: Colors.white)),
+                    Text('$err', style: const TextStyle(color: Colors.white70)),
+                    const SizedBox(height: 10),
+                    ElevatedButton(
+                      onPressed: () => ref.refresh(guessQuestionsProvider),
+                      child: const Text('إعادة المحاولة'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+                  ],
+                ),
+              ),
+            ),
+            const BannerAdWidget(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTimerControlBar(BuildContext context, int timerSeconds, RiskTimerNotifier timerNotifier) {
-    return Consumer(
-      builder: (context, ref, _) {
-        final notifier = ref.read(riskTimerProvider.notifier);
-        final seconds = ref.watch(riskTimerProvider);
-
-        return Center(
-          child: Container(
-            width: MediaQuery.of(context).size.width * 0.8, // ✅ عرض 80% من الشاشة زي ريسك سكرين
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: AppColors.cardGradient,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: AppColors.gameOnGreen.withOpacity(0.3),
-                width: 2,
-              ),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  notifier.formattedTime,
-                  style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                    color: seconds <= 10 ? AppColors.red : AppColors.brightGold,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 48,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 16,
-                  children: [
-                    _buildTimerButton(
-                      icon: notifier.isRunning ? Icons.pause : Icons.play_arrow,
-                      onPressed: () {
-                        if (notifier.isRunning) {
-                          notifier.pauseTimer();
-                        } else {
-                          notifier.resumeTimer();
-                        }
-                        setState(() {});
-                      },
-                      color: AppColors.brightGold,
-                    ),
-                    _buildTimerButton(
-                      icon: Icons.refresh,
-                      onPressed: () {
-                        notifier.resetTimer();
-                        setState(() {});
-                      },
-                      color: AppColors.red,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildTimerButton({
+  // زرار التايمر المتحرك
+  Widget _timerButton({
     required IconData icon,
-    required VoidCallback onPressed,
+    required VoidCallback onTap,
     required Color color,
   }) {
     return GestureDetector(
-      onTap: onPressed,
-      child: Container(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
         width: 55,
         height: 55,
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(40),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.3),
+              color: color.withOpacity(0.4),
               blurRadius: 8,
-              offset: const Offset(0, 4),
+              spreadRadius: 1,
             ),
           ],
         ),
-        child: Icon(icon, color: AppColors.black, size: 26),
+        child: Icon(icon, color: Colors.black, size: 28),
       ),
     );
   }
 
-  Widget _buildQuestionCard(BuildContext context, int index) {
-    final isRevealed = _revealedAnswers[index];
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+  // كارت السؤال
+  Widget _buildQuestionCard(GuessQuestion q, int number) {
+    final isRevealed = _revealedIds.contains(q.id);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+      width: double.infinity,
+      constraints: const BoxConstraints(minHeight: 180),
+      margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF1A1A1A),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white10),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white12),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // رقم السؤال
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.grey,
-            ),
+          CircleAvatar(
+            backgroundColor: Colors.grey.shade300,
+            radius: 18,
             child: Text(
-              '${index + 1}',
+              '$number',
               style: const TextStyle(
                 color: Colors.black,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ),
+
+          const SizedBox(height: 14),
+
+          Text(
+            q.question,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+
           const SizedBox(height: 16),
-          const Center(
+
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                isRevealed
+                    ? _revealedIds.remove(q.id)
+                    : _revealedIds.add(q.id);
+              });
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.gameOnGreen,
+              padding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
             child: Text(
-              'من هو اللاعب الذي سجل الهدف الحاسم في المباراة النهائية؟',
+              isRevealed ? 'إخفاء الإجابة' : 'إظهار الإجابة',
+              style: const TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+
+          if (isRevealed) ...[
+            const SizedBox(height: 12),
+            Text(
+              q.answer,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+              style: const TextStyle(
+                color: AppColors.brightGold,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Center(
-            child: ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _revealedAnswers[index] = !_revealedAnswers[index];
-                });
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.gameOnGreen,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Text(
-                isRevealed ? 'إخفاء الإجابة' : 'إظهار الإجابة',
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          if (isRevealed)
-            const Center(
-              child: Text(
-                'اللاعب: محمد صلاح ⚽',
-                style: TextStyle(
-                  color: AppColors.brightGold,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ),
+          ],
         ],
       ),
     );

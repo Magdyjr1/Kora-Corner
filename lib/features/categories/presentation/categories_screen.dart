@@ -3,7 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/game_on_theme.dart'; // Import the new theme
+import '../../../core/theme/game_on_theme.dart';
+import '../../../ads/banner_ad_widget.dart';
 
 // Supabase client
 final supabase = Supabase.instance.client;
@@ -16,14 +17,13 @@ class CategoriesScreen extends StatefulWidget {
 }
 
 class _CategoriesScreenState extends State<CategoriesScreen> {
-  // Loading state for the Bank game specifically
   bool _isBankGameLoading = false;
 
   final List<CategoryItem> _categories = const [
     CategoryItem(
       name: 'بنك',
       icon: Icons.account_balance,
-      color: KoraCornerColors.primaryGreen, // Corrected color
+      color: KoraCornerColors.primaryGreen,
       route: '/bank',
     ),
     CategoryItem(
@@ -35,7 +35,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     CategoryItem(
       name: 'اهبد صح',
       icon: Icons.gps_fixed,
-      color: KoraCornerColors.primaryGreen, // Corrected color
+      color: KoraCornerColors.primaryGreen,
       route: '/GuessRightScreen',
     ),
     CategoryItem(
@@ -47,7 +47,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     CategoryItem(
       name: 'باسورد',
       icon: Icons.lock,
-      color: KoraCornerColors.primaryGreen, // Corrected color
+      color: KoraCornerColors.primaryGreen,
       route: '/password',
     ),
     CategoryItem(
@@ -59,7 +59,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     CategoryItem(
       name: 'توب 10',
       icon: Icons.format_list_numbered,
-      color: KoraCornerColors.primaryGreen, // Corrected color
+      color: KoraCornerColors.primaryGreen,
       route: '/top-10',
     ),
     CategoryItem(
@@ -71,35 +71,94 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     CategoryItem(
       name: 'X O',
       icon: Icons.close,
-      color: KoraCornerColors.primaryGreen, // Corrected color
+      color: KoraCornerColors.primaryGreen,
       route: '/XOXOChallengeScreen',
     ),
   ];
 
-  // This function loads data for the Bank game and then navigates
   Future<void> _loadAndStartBankGame() async {
+    if (_isBankGameLoading) return;
+
     setState(() {
       _isBankGameLoading = true;
     });
 
     try {
-      final response = await supabase.rpc(
-        'get_bank_questions',
-        params: {'p_count': 72}, // Corrected parameter name
-      );
+      print('🔍 Starting to load bank questions...');
 
-      if (mounted && response is List) {
-        if (response.isNotEmpty) {
-          context.go('/bank', extra: response);
-        } else {
-          _showErrorSnackBar('Failed to load questions. The server returned an empty list.');
-        }
-      } else {
-         _showErrorSnackBar('Failed to load questions. Invalid response from server.');
+      // Direct query from bank table
+      final response = await supabase
+          .from('bank')
+          .select('*')
+          .limit(1000);
+
+      print('📦 Response type: ${response.runtimeType}');
+      print('📦 Response length: ${response.length}');
+
+      if (!mounted) return;
+
+      if (response.isEmpty) {
+        _showErrorSnackBar(
+          'الجدول فاضي! محتاج تضيف أسئلة في جدول bank',
+        );
+        print('❌ No questions found in bank table');
+        return;
       }
-    } catch (e) {
+
+      // Check if we have the required fields
+      final firstItem = response.first;
+      if (!firstItem.containsKey('question_text') ||
+          !firstItem.containsKey('correct_answer')) {
+        _showErrorSnackBar(
+          'الأعمدة غلط! لازم يكون في question_text و correct_answer',
+        );
+        print('❌ Missing required fields: $firstItem');
+        return;
+      }
+
+      // Shuffle and take 72 questions
+      final shuffled = List.from(response)..shuffle();
+      final questions = shuffled.take(72).toList();
+
+      print('✅ Loaded ${questions.length} questions');
+
+      if (questions.length < 72) {
+        _showErrorSnackBar(
+          'محتاج 72 سؤال على الأقل. موجود حالياً ${questions.length}',
+        );
+        return;
+      }
+
+      // Navigate with questions
       if (mounted) {
-        _showErrorSnackBar('An error occurred: ${e.toString()}');
+        print('🚀 Navigating to bank screen...');
+        context.go('/bank', extra: questions);
+      }
+    } on PostgrestException catch (e) {
+      print('❌ PostgrestException: ${e.message}');
+      print('   Code: ${e.code}');
+      print('   Details: ${e.details}');
+      print('   Hint: ${e.hint}');
+
+      if (mounted) {
+        String errorMsg = 'خطأ في قاعدة البيانات';
+
+        if (e.message.contains('permission denied') ||
+            e.message.contains('not found')) {
+          errorMsg = 'مفيش صلاحية للوصول للجدول. تأكد من RLS Policies';
+        } else if (e.message.contains('relation') &&
+            e.message.contains('does not exist')) {
+          errorMsg = 'الجدول مش موجود! تأكد إن الاسم "bank"';
+        }
+
+        _showErrorSnackBar('$errorMsg\n${e.message}');
+      }
+    } catch (e, stackTrace) {
+      print('❌ General Error: $e');
+      print('   Stack: $stackTrace');
+
+      if (mounted) {
+        _showErrorSnackBar('حصل خطأ: ${e.toString()}');
       }
     } finally {
       if (mounted) {
@@ -111,10 +170,18 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   }
 
   void _showErrorSnackBar(String message) {
+    if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.red,
+        duration: const Duration(seconds: 5),
+        action: SnackBarAction(
+          label: 'حسناً',
+          textColor: Colors.white,
+          onPressed: () {},
+        ),
       ),
     );
   }
@@ -132,36 +199,45 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           onPressed: () => context.go('/home'),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: GridView.builder(
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 1,
-            childAspectRatio: 3.5,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-          ),
-          itemCount: _categories.length,
-          itemBuilder: (context, index) {
-            final category = _categories[index];
-            return _buildCategoryCard(context, category);
-          },
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 1,
+                    childAspectRatio: 3.5,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                  ),
+                  itemCount: _categories.length,
+                  itemBuilder: (context, index) {
+                    final category = _categories[index];
+                    return _buildCategoryCard(context, category);
+                  },
+                ),
+              ),
+            ),
+            const BannerAdWidget(),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildCategoryCard(BuildContext context, CategoryItem category) {
-    // Check if this card is the Bank game card and if it's loading
     final isThisCardLoading = category.route == '/bank' && _isBankGameLoading;
 
     return GestureDetector(
-      // Disable tap while loading
-      onTap: isThisCardLoading ? null : () {
+      onTap: isThisCardLoading
+          ? null
+          : () {
         if (category.route == '/bank') {
-          // Call the data loading function for the bank game
           _loadAndStartBankGame();
-        } else if (category.route == '/offside' || category.route == '/x-or-o') {
+        } else if (category.route == '/offside' ||
+            category.route == '/x-or-o') {
           _showComingSoonDialog(context, category.name);
         } else {
           context.go(category.route);
@@ -215,22 +291,27 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                   Text(
                     category.name,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    isThisCardLoading ? 'Loading Game...' : 'Tap to start challenge',
+                    isThisCardLoading
+                        ? 'جاري التحميل...'
+                        : 'اضغط للبدء',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.lightGrey,
-                        ),
+                      color: AppColors.lightGrey,
+                    ),
                   ),
                 ],
               ),
             ),
-            // Show a loading indicator instead of the arrow
             if (isThisCardLoading)
-              const CircularProgressIndicator()
+              const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
             else
               Icon(
                 Icons.arrow_forward_ios,
@@ -255,16 +336,16 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           '$categoryName Challenge',
           style: const TextStyle(color: AppColors.white),
         ),
-        content: Text(
-          'This challenge is coming soon! Stay tuned for more exciting football quiz formats.',
-          style: const TextStyle(color: AppColors.lightGrey),
+        content: const Text(
+          'هذا التحدي قريباً! ترقبوا المزيد من التحديات المثيرة.',
+          style: TextStyle(color: AppColors.lightGrey),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text(
-              'OK',
-              style: TextStyle(color: KoraCornerColors.primaryGreen), // Corrected color
+              'حسناً',
+              style: TextStyle(color: KoraCornerColors.primaryGreen),
             ),
           ),
         ],

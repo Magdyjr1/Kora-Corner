@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/responsive.dart';
+import '../../../ads/banner_ad_widget.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -73,28 +74,37 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.darkPitch,
-      body: Center(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                'assets/images/word.png',
-                width: Responsive.getAvatarSize(context) * 7,
-              ),
-              SizedBox(height: Responsive.getSpacing(context) * 2),
-              SizedBox(height: Responsive.getSpacing(context) * 0.5),
-              ResponsiveText(
-                'Football Quiz & Challenges',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: AppColors.lightGrey,
-                  letterSpacing: 1,
-                  fontSize: Responsive.getBodySize(context),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: Center(
+                child: FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        'assets/images/word.png',
+                        width: Responsive.getAvatarSize(context) * 7,
+                      ),
+                      SizedBox(height: Responsive.getSpacing(context) * 2),
+                      SizedBox(height: Responsive.getSpacing(context) * 0.5),
+                      ResponsiveText(
+                        'Football Quiz & Challenges',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: AppColors.lightGrey,
+                          letterSpacing: 1,
+                          fontSize: Responsive.getBodySize(context),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ],
-          ),
+            ),
+            const BannerAdWidget(),
+          ],
         ),
       ),
     );
